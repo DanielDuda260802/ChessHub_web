@@ -8,37 +8,29 @@ import json
 
 board = chess.Board()
 
-# Kreiranje globalne igre
 game = chess.pgn.Game()
 current_node = game
 
-# Homepage view
 def homepage(request):
     return render(request, 'homepage.html')
 
 @csrf_exempt
 def add_move(request):
-    """
-    Dodaj potez u partiju, s podrškom za promociju.
-    """
     global current_node
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            move_san = data.get("move")  # Notacija poteza, uključujući promociju (npr. 'g7h8Q')
+            move_san = data.get("move")
             board = current_node.board()
 
-            # Pokušaj parsirati potez
             try:
                 move = board.parse_san(move_san)
             except ValueError:
                 return JsonResponse({"error": "Invalid move format"}, status=400)
 
-            # Provjeri legalnost poteza
             if move not in board.legal_moves:
                 return JsonResponse({"error": "Illegal move"}, status=400)
 
-            # Dodaj potez ili varijantu
             matching_variation = None
             for variation in current_node.variations:
                 if variation.move == move:
@@ -50,7 +42,6 @@ def add_move(request):
             else:
                 current_node = current_node.add_variation(move)
 
-            # Ažuriraj ploču
             board.push(move)
             fen = board.fen()
 
@@ -62,9 +53,6 @@ def add_move(request):
 
 @csrf_exempt
 def validate_move(request):
-    """
-    Provjeri je li potez legalan.
-    """
     global current_node
     if request.method == "POST":
         try:
@@ -72,7 +60,6 @@ def validate_move(request):
             move_san = data.get("move")
             board = current_node.board()
 
-            # Pokušaj parsirati potez
             try:
                 move = board.parse_san(move_san)
                 if board.is_legal(move):
@@ -87,9 +74,6 @@ def validate_move(request):
 
 @csrf_exempt
 def prev_move(request):
-    """
-    Vrati se na prethodni potez.
-    """
     global current_node
     if current_node.parent:
         current_node = current_node.parent
@@ -101,19 +85,14 @@ def prev_move(request):
 
 @csrf_exempt
 def next_move(request):
-    """
-    Idi na sljedeći potez ili prikaži dostupne varijacije.
-    """
     global current_node
     if current_node.variations:
         if len(current_node.variations) == 1:
-            # Ako postoji samo jedna varijacija, automatski je odigraj
             current_node = current_node.variations[0]
             board = current_node.board()
             fen = board.fen()
             return JsonResponse({"fen": fen, "pgn": str(game)})
         else:
-            # Ako postoji više varijacija, pošalji popis poteza
             variations = [str(variation.move) for variation in current_node.variations]
             print("Dostupne varijacije:", variations)
             return JsonResponse({"variations": variations})
@@ -122,9 +101,6 @@ def next_move(request):
 
 @csrf_exempt
 def current_state(request):
-    """
-    Provjeri je li ploča na početnoj poziciji i postoji li sljedeći potez.
-    """
     global current_node
     board = current_node.board()
 
@@ -139,9 +115,6 @@ def current_state(request):
 
 @csrf_exempt
 def choose_variation(request):
-    """
-    Odaberi varijaciju poteza.
-    """
     global current_node
     if request.method == "POST":
         try:
