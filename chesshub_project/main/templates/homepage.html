@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    {% load static %}
+    <title>Chess Game</title>
+    <!-- Javascript -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <link rel="stylesheet" href="{% static 'chessboardjs-1.0.0/css/chessboard-1.0.0.css' %}">
+    <script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+
+    <!-- Css -->
+    <link rel="stylesheet" href="{% static 'css/chessboard_style.css' %}">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+    <div id="board-container">
+        <div id="board"></div>
+        <div id="controls">
+            <button id="prev-move" disabled>⟨ Previous</button>
+            <button id="next-move" disabled>Next ⟩</button>
+        </div>
+    </div>
+
+    <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script> 
+</body>
+</html>
