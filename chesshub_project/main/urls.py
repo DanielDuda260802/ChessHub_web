@@ -11,4 +11,5 @@ urlpatterns = [
     path("next-move/", views.next_move, name="next_move"),
     path("current_state/", views.current_state, name="current_state"),
     path("choose-variation/", views.choose_variation, name="choose_variation"),
+    path('get_games/', views.get_games, name='get_games'),
 ]

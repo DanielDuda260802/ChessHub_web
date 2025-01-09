@@ -22,10 +22,33 @@
     </div>
 </div>
 <div id="center-column" class="column">
-    <h2 class="header">Game List</h2>
-    <ul class="game-list">
-    </ul>
+    <div id="loader-overlay"></div>
+    <div id="loader">
+        <div class="spinner"></div>
+        <p class="loading-text">Loading games...</p>
+    </div>
+    <table id="game-list-table">
+        <thead>
+            <tr>
+                <th>White</th>
+                <th>White Elo</th>
+                <th>Black</th>
+                <th>Black Elo</th>
+                <th>Result</th>
+                <th>Date</th>
+                <th>Site</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Dinamički se popunjava iz JavaScript-a -->
+        </tbody>
+    </table>
+    <div id="pagination">
+        <!-- Paginacija će se generirati dinamički ovdje -->
+    </div>
+    
 </div>
+
 <div id="right-column" class="column">
     <h2 class="header">Details</h2>
 </div>

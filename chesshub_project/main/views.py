@@ -1,10 +1,17 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core.cache import cache
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.core.paginator import Paginator
+
 import chess
 import chess.pgn
 import io
 import json
+
+from main.models import Game
 
 board = chess.Board()
 
@@ -134,3 +141,44 @@ def choose_variation(request):
         except Exception as e:
             print("Greška pri odabiru varijacije:", str(e))
             return JsonResponse({"error": str(e)}, status=400)
+
+def get_games(request):
+    page = int(request.GET.get('page', 1))
+    page_size = 100
+
+    total_pages_key = 'games_total_pages'
+    total_pages = cache.get(total_pages_key)
+
+    if not total_pages:
+        games = Game.objects.only(
+            'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+        ).order_by('-date')
+        paginator = Paginator(games, page_size)
+        total_pages = paginator.num_pages
+        cache.set(total_pages_key, total_pages, 1200)
+
+    cache_key = f'games_page_{page}'
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        return JsonResponse(cached_data)
+
+    games = Game.objects.only(
+        'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+    ).order_by('-date')
+    paginator = Paginator(games, page_size)
+    page_obj = paginator.get_page(page)
+
+    games_list = list(page_obj.object_list.values(
+        'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+    ))
+
+    response_data = {
+        'games': games_list,
+        'total_pages': total_pages,
+        'current_page': page
+    }
+
+    cache.set(cache_key, response_data, 1200)
+
+    return JsonResponse(response_data)
