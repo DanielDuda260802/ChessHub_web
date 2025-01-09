@@ -14,13 +14,22 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
-    <div id="board-container">
-        <div id="board"></div>
-        <div id="controls">
-            <button id="prev-move" disabled>⟨ Previous</button>
-            <button id="next-move" disabled>Next ⟩</button>
-        </div>
+<div id="left-column" class="column">
+    <div id="board"></div>
+    <div id="controls">
+        <button id="prev-move" disabled>⟨ Previous</button>
+        <button id="next-move" disabled>Next ⟩</button>
     </div>
+</div>
+<div id="center-column" class="column">
+    <h2 class="header">Game List</h2>
+    <ul class="game-list">
+    </ul>
+</div>
+<div id="right-column" class="column">
+    <h2 class="header">Details</h2>
+</div>
+
 
     <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script> 
 </body>

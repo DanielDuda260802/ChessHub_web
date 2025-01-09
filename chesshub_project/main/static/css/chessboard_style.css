@@ -1,22 +1,44 @@
 body {
     display: flex;
-    flex-direction: row;
     height: 100vh;
     margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #2b2b2b;
+    color: white;
 }
 
-#board-container {
-    width: 50%;
+.column {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+#left-column {
+    flex: 0.4;
+    background-color: #1e1e1e;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    background-color: #f0f0f0;
+    justify-content: flex-start;
+}
+
+#center-column {
+    flex: 0.4;
+    padding: 10px;
+}
+
+#right-column {
+    flex: 0.2;
+    background-color: #1e1e1e;
+    border-left: 1px solid #333;
 }
 
 #board {
-    width: 90%;
+    width: 100%;
     max-width: 700px;
+    margin: 0 auto;
 }
 
 #controls {
@@ -26,8 +48,41 @@ body {
 #controls button {
     margin: 5px;
     padding: 10px 20px;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
+    background-color: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+#controls button:disabled {
+    background-color: #666;
+    cursor: not-allowed;
+}
+
+.game-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.game-list-item {
+    padding: 10px;
+    border-bottom: 1px solid #333;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.game-list-item:hover {
+    background-color: #444;
+}
+
+.header {
+    font-weight: bold;
+    font-size: 18px;
+    margin-bottom: 10px;
+    text-align: center;
 }
 
 #variation-menu {
@@ -35,47 +90,52 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background-color: white;
-    border: 1px solid black;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
     padding: 20px;
     z-index: 1000;
     text-align: center;
+    color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
 }
 
-#variation-menu button {
-    margin: 5px;
-    padding: 10px;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-#variation-menu ul {
+.variation-menu-list {
     list-style: none;
     padding: 0;
     margin: 0;
 }
 
-#variation-menu li {
+.variation-menu-item {
     padding: 10px;
     margin-bottom: 5px;
     cursor: pointer;
-    border: 1px solid black;
-    background-color: white;
-    transition: background-color 0.2s;
+    border: 1px solid #444;
+    background-color: #333;
+    color: white;
+    transition: background-color 0.2s, transform 0.2s;
+    border-radius: 4px;
+    font-weight: normal;
+    text-align: left;
 }
 
-#variation-menu li:hover,
-#variation-menu li.active {
-    background-color: #e0e0e0;
-    font-weight: bold;
+.variation-menu-item:hover {
+    background-color: #444;
+    transform: scale(1.05);
 }
+
+.variation-menu-item.active {
+    background-color: #555;
+    font-weight: bold;
+    transform: scale(1.05);
+}
+
 
 #promotion-menu {
     display: flex;
-    gap: 10px;
     border-radius: 8px;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    background-color: white;
+    background-color: #333;
 }
 #promotion-menu button {
     padding: 0;

@@ -35,49 +35,74 @@ function showPromotionMenu(move, targetSquare) {
     menu.style.padding = "10px";
     menu.style.zIndex = "1000";
     menu.style.display = "flex";
+    menu.style.flexDirection = "row";
     menu.style.justifyContent = "center";
-
-    const boardRect = document.getElementById("board").getBoundingClientRect();
-    const squareSize = boardRect.width / 8; 
-    const col = targetSquare.charCodeAt(0) - 97; 
-    const row = 8 - parseInt(targetSquare[1]); 
-            
-    menu.style.left = `${boardRect.left + col * squareSize + squareSize / 2 - 80}px`;
-    menu.style.top = `${boardRect.top + row * squareSize - 60}px`;
+    menu.style.alignItems = "center";
     
-    const pieces = ["q", "r", "b", "n"]; 
+    const boardElement = document.getElementById("board");
+    const boardRect = boardElement.getBoundingClientRect();
+    const squareSize = boardRect.width / 8;
+
+    console.log("Board Rect:", boardRect);
+    console.log("Square Size:", squareSize);
+
+    const col = targetSquare.charCodeAt(0) - 97;
+    const row = 8 - parseInt(targetSquare[1]);
+
+    console.log("Column:", col, "Row:", row);
+
+    const squareCenterX = boardRect.left + col * squareSize + squareSize / 2;
+    const squareCenterY = boardRect.top + row * squareSize + squareSize / 2;
+
+    console.log("Square Center X:", squareCenterX, "Square Center Y:", squareCenterY);
+
+    document.body.appendChild(menu);
+    const menuWidth = menu.offsetWidth;
+    const menuHeight = menu.offsetHeight;
+
+    console.log("Menu Width:", menuWidth, "Menu Height:", menuHeight);
+
+    const left = squareCenterX - menuWidth / 2;
+    const top = squareCenterY - menuHeight / 2;
+
+    console.log("Calculated Left:", left, "Calculated Top:", top);
+
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    
+    const pieces = ["q", "r", "b", "n"];
     const pieceImages = {
         "w": { "q": "wQ", "r": "wR", "b": "wB", "n": "wN" },
-        "b": { "q": "bQ", "r": "bR", "b": "bB", "n": "bN" }
+        "b": { "q": "bQ", "r": "bR", "b": "bB", "n": "bN" },
     };
-
-    const piece = board.position()[move.substring(0, 2)]; 
-    const color = piece[0]; // 'w' ili 'b'
+    
+    const position = board.position(); // Get current board position
+    const piece = position[move.substring(0, 2)];
+    const color = piece[0];
 
     pieces.forEach((pieceType) => {
-    const button = document.createElement("button");
-    button.style.border = "none";
-    button.style.background = "none";
-    button.style.cursor = "pointer";
-    button.style.margin = "5px";
-
-    const img = document.createElement("img");
-    img.src = `/static/chessboardjs-1.0.0/img/chesspieces/wikipedia/${pieceImages[color][pieceType]}.png`;
-    img.alt = pieceType.toUpperCase();
-    img.style.width = "40px";
-    img.style.height = "40px";
-
-    button.appendChild(img);
-    button.addEventListener("click", function () {
-        document.body.removeChild(menu);
-        const promotionMove = move + pieceType.toUpperCase(); // Dodaj promociju u notaciju
-        sendMoveToBackend(promotionMove); // Pošalji potez backendu
+        const button = document.createElement("button");
+        button.style.border = "none";
+        button.style.background = "none";
+        button.style.cursor = "pointer";
+        button.style.margin = "5px";
+    
+        const img = document.createElement("img");
+        img.src = `/static/chessboardjs-1.0.0/img/chesspieces/wikipedia/${pieceImages[color][pieceType]}.png`;
+        img.alt = pieceType.toUpperCase();
+        img.style.width = "40px";
+        img.style.height = "40px";
+    
+        button.appendChild(img);
+        button.addEventListener("click", function () {
+            document.body.removeChild(menu);
+            const promotionMove = move + pieceType.toUpperCase();
+            sendMoveToBackend(promotionMove);
         });
         menu.appendChild(button);
     });
-
     document.body.appendChild(menu);
-    }
+}
     
 function sendMoveToBackend(move) {
     const previousFen = board.fen();
@@ -186,15 +211,21 @@ function navigateNext() {
             return response.json();
         })
         .then((data) => {
-            if (data.fen) {
+            if (data.variations) {
+                console.log("Dostupne varijacije:", data.variations);
+                showVariationMenu(data.variations);
+            } else if (data.fen) {
                 board.position(data.fen);
+                updateButtonStates();
+            } else {
+                console.error("Unexpected response:", data);
             }
-            updateButtonStates(); // Ažuriraj stanje gumba
         })
         .catch((error) => {
             console.error("Error navigating next:", error.message);
         });
 }
+
 
 document.getElementById("next-move").addEventListener("click", function () {
     navigateNext();
@@ -209,35 +240,21 @@ document.addEventListener("keydown", function (event) {
 updateButtonStates();
 
 function showVariationMenu(variations) {
-    console.log("Prikazujem varijacije za izbor:", variations);
-
     const menu = document.createElement("div");
     menu.id = "variation-menu";
-    menu.style.position = "fixed";
-    menu.style.top = "50%";
-    menu.style.left = "50%";
-    menu.style.transform = "translate(-50%, -50%)";
-    menu.style.backgroundColor = "white";
-    menu.style.border = "1px solid black";
-    menu.style.padding = "20px";
-    menu.style.zIndex = 1000;
-    menu.style.textAlign = "center";
 
     const list = document.createElement("ul");
-    list.style.listStyle = "none";
-    list.style.padding = "0";
-    list.style.margin = "0";
+    list.className = "variation-menu-list";
 
     let currentIndex = 0;
 
     variations.forEach((variation, index) => {
         const listItem = document.createElement("li");
         listItem.textContent = variation;
-        listItem.style.padding = "10px";
-        listItem.style.marginBottom = "5px";
-        listItem.style.cursor = "pointer";
-        listItem.style.border = "1px solid black";
-        listItem.style.backgroundColor = index === currentIndex ? "#e0e0e0" : "white";
+        listItem.className = "variation-menu-item";
+        if (index === currentIndex) {
+            listItem.classList.add("active");
+        }
 
         listItem.addEventListener("click", function () {
             console.log("Odabrana varijacija klikom:", variation);
@@ -252,7 +269,7 @@ function showVariationMenu(variations) {
     document.body.appendChild(menu);
 
     function handleKeyNavigation(event) {
-        const listItems = list.querySelectorAll("li");
+        const listItems = list.querySelectorAll(".variation-menu-item");
 
         if (event.key === "ArrowDown") {
             currentIndex = (currentIndex + 1) % variations.length;
@@ -268,7 +285,7 @@ function showVariationMenu(variations) {
 
     function updateHighlight(listItems) {
         listItems.forEach((item, index) => {
-            item.style.backgroundColor = index === currentIndex ? "#e0e0e0" : "white";
+            item.classList.toggle("active", index === currentIndex);
         });
     }
 
@@ -282,6 +299,7 @@ function showVariationMenu(variations) {
 
     menu.focus();
 }
+
 
 function selectVariation(index) {
     fetch("/choose-variation/", {
