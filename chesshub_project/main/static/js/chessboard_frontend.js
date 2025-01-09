@@ -333,6 +333,8 @@ function getCsrfToken() {
 });
 
 /* GAME LIST **/
+let currentPage = 1
+
 function showLoader(text = "Loading games...") {
     const loader = document.getElementById("loader");
     const loadingText = loader.querySelector(".loading-text");
@@ -348,54 +350,55 @@ function hideLoader() {
     document.body.style.pointerEvents = "auto";
 }
 
-
-let currentPage = 1; 
-
 async function fetchGames(page = 1) {
-    showLoader(); 
+    showLoader();
 
     try {
         const response = await fetch(`/get_games/?page=${page}`);
         const data = await response.json();
 
-        renderGames(data.games); 
+        renderGames(data.games);
         setupPagination(data.total_pages, data.current_page);
+
+        if (data.games.length > 0) {
+            displayGameDetailsOnTop(data.games[0]);
+        }
     } catch (error) {
         console.error("Error fetching games:", error);
     } finally {
-        hideLoader(); 
+        hideLoader();
     }
 }
 
-window.fetchGames = fetchGames;
 
 function renderGames(games) {
     const tableBody = document.querySelector('#game-list-table tbody');
     tableBody.innerHTML = '';
     games.forEach(game => {
-        const row = `
-            <tr>
-                <td>${game.white_player || 'Unknown'}</td>
-                <td>${game.white_elo || 'N/A'}</td>
-                <td>${game.black_player || 'Unknown'}</td>
-                <td>${game.black_elo || 'N/A'}</td>
-                <td>${game.result || 'N/A'}</td>
-                <td>${game.date || 'N/A'}</td>
-                <td>${game.site || 'N/A'}</td>
-            </tr>`;
-        tableBody.insertAdjacentHTML('beforeend', row);
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${game.white_player || 'Unknown'}</td>
+            <td>${game.white_elo || 'N/A'}</td>
+            <td>${game.black_player || 'Unknown'}</td>
+            <td>${game.black_elo || 'N/A'}</td>
+            <td>${game.result || 'N/A'}</td>
+            <td>${game.date || 'N/A'}</td>
+            <td>${game.site || 'N/A'}</td>
+        `;
+        row.addEventListener('click', () => displayGameDetailsOnTop(game)); 
+        tableBody.appendChild(row);
     });
 }
 
 function setupPagination(totalPages, currentPage) {
     const pagination = document.querySelector('#pagination');
-    pagination.innerHTML = ''; 
+    pagination.innerHTML = ''; // Clear previous content
 
     const nav = document.createElement('nav');
     const ul = document.createElement('ul');
     ul.classList.add('pagination');
 
-    const maxVisiblePages = 3; 
+    const maxVisiblePages = 3;
     let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
@@ -403,72 +406,92 @@ function setupPagination(totalPages, currentPage) {
         startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
+    // Add 'Previous' button
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
-    ul.insertAdjacentHTML(
-        'beforeend',
-        `<li class="page-item ${prevDisabled}">
-            <a class="page-link" href="#" onclick="${currentPage > 1 ? `fetchGames(${currentPage - 1})` : `return false;`}">
-                &laquo;
-            </a>
-        </li>`
-    );
+    const prevButton = document.createElement('li');
+    prevButton.className = `page-item ${prevDisabled}`;
+    prevButton.innerHTML = `
+        <a class="page-link" href="#" aria-label="Previous">&laquo;</a>
+    `;
+    prevButton.addEventListener('click', () => {
+        if (currentPage > 1) fetchGames(currentPage - 1);
+    });
+    ul.appendChild(prevButton);
 
+    // Add first page and "..." if needed
     if (startPage > 1) {
-        ul.insertAdjacentHTML(
-            'beforeend',
-            `<li class="page-item">
-                <a class="page-link" href="#" onclick="fetchGames(1); return false;">1</a>
-            </li>`
-        );
+        const firstPage = document.createElement('li');
+        firstPage.className = 'page-item';
+        firstPage.innerHTML = `
+            <a class="page-link" href="#">1</a>
+        `;
+        firstPage.addEventListener('click', () => fetchGames(1));
+        ul.appendChild(firstPage);
+
         if (startPage > 2) {
-            ul.insertAdjacentHTML(
-                'beforeend',
-                `<li class="page-item disabled">
-                    <span class="page-link less-emphasis">...</span>
-                </li>`
-            );
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = `<span class="page-link">...</span>`;
+            ul.appendChild(dots);
         }
     }
 
+    // Add visible page numbers
     for (let i = startPage; i <= endPage; i++) {
-        const active = i === currentPage ? 'active' : '';
-        ul.insertAdjacentHTML(
-            'beforeend',
-            `<li class="page-item ${active}">
-                <a class="page-link" href="#" onclick="fetchGames(${i}); return false;">${i}</a>
-            </li>`
-        );
+        const pageItem = document.createElement('li');
+        pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        pageItem.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+        pageItem.addEventListener('click', () => fetchGames(i));
+        ul.appendChild(pageItem);
     }
 
+    // Add last page and "..." if needed
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
-            ul.insertAdjacentHTML(
-                'beforeend',
-                `<li class="page-item disabled">
-                    <span class="page-link less-emphasis">...</span>
-                </li>`
-            );
+            const dots = document.createElement('li');
+            dots.className = 'page-item disabled';
+            dots.innerHTML = `<span class="page-link">...</span>`;
+            ul.appendChild(dots);
         }
-        ul.insertAdjacentHTML(
-            'beforeend',
-            `<li class="page-item">
-                <a class="page-link" href="#" onclick="fetchGames(${totalPages}); return false;">${totalPages}</a>
-            </li>`
-        );
+
+        const lastPage = document.createElement('li');
+        lastPage.className = 'page-item';
+        lastPage.innerHTML = `
+            <a class="page-link" href="#">${totalPages}</a>
+        `;
+        lastPage.addEventListener('click', () => fetchGames(totalPages));
+        ul.appendChild(lastPage);
     }
 
+    // Add 'Next' button
     const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-    ul.insertAdjacentHTML(
-        'beforeend',
-        `<li class="page-item ${nextDisabled}">
-            <a class="page-link" href="#" onclick="${currentPage < totalPages ? `fetchGames(${currentPage + 1})` : `return false;`}">
-                &raquo;
-            </a>
-        </li>`
-    );
+    const nextButton = document.createElement('li');
+    nextButton.className = `page-item ${nextDisabled}`;
+    nextButton.innerHTML = `
+        <a class="page-link" href="#" aria-label="Next">&raquo;</a>
+    `;
+    nextButton.addEventListener('click', () => {
+        if (currentPage < totalPages) fetchGames(currentPage + 1);
+    });
+    ul.appendChild(nextButton);
 
     nav.appendChild(ul);
     pagination.appendChild(nav);
 }
 
-fetchGames(currentPage);
+function displayGameDetailsOnTop(game) {
+    document.getElementById("game-result").textContent = `${game.result}`;
+    document.getElementById("game-white-player").textContent = `${game.white_player || 'Unknown'}${game.white_title ? ` (${game.white_title})` : ''}`;
+    document.getElementById("game-white-elo").textContent = `ELO: ${game.white_elo}`;
+    document.getElementById("game-black-player").textContent = `${game.black_player || 'Unknown'}${game.black_title ? ` (${game.black_title})` : ''}`;
+    document.getElementById("game-black-elo").textContent = `ELO: ${game.black_elo}`;
+    document.getElementById("game-date").textContent = game.date ? `${game.date}` : '';
+    document.getElementById("game-site").textContent = `Site: ${game.site}`;
+}
+
+
+document.addEventListener("DOMContentLoaded", async function () {
+    await fetchGames(currentPage); // Fetch all games on load
+});
+
+fetchGames(currentPage); // Prvo učitavanje

@@ -151,7 +151,7 @@ def get_games(request):
 
     if not total_pages:
         games = Game.objects.only(
-            'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+            'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
         ).order_by('-date')
         paginator = Paginator(games, page_size)
         total_pages = paginator.num_pages
@@ -164,13 +164,13 @@ def get_games(request):
         return JsonResponse(cached_data)
 
     games = Game.objects.only(
-        'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+        'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
     ).order_by('-date')
     paginator = Paginator(games, page_size)
     page_obj = paginator.get_page(page)
 
     games_list = list(page_obj.object_list.values(
-        'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+        'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
     ))
 
     response_data = {
@@ -182,3 +182,4 @@ def get_games(request):
     cache.set(cache_key, response_data, 1200)
 
     return JsonResponse(response_data)
+

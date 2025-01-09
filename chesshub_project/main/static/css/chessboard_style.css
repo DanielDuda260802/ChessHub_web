@@ -149,6 +149,48 @@ body {
     transform: scale(1.2);
 }
 
+/* DETAILS OF THE SELECTED GAME */
+#game-details-header {
+    background-color: #1f1e1e;
+    padding: 10px; 
+    color: #fff; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    border-radius: 12px; 
+    margin-bottom: 15px; 
+}
+
+#game-details-header .left-section,
+#game-details-header .right-section {
+    flex: 1; 
+    text-align: center; 
+}
+
+#game-details-header .middle-section {
+    flex: 2; 
+    text-align: center; 
+}
+
+.left-section span,
+.right-section span {
+    display: block; 
+    font-size: 1.1em; 
+    font-weight: bold;
+}
+
+#game-result {
+    font-size: 2em;
+}
+
+#game-date {
+    font-size: 1em;
+}
+
+#game-site {
+    font-size: 1em;
+}
+
 /* GAME LIST */
 #loader-overlay {
     display: none; 
