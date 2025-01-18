@@ -1,0 +1,115 @@
+body {
+    height: 100vh;
+    font-family: Arial, sans-serif;
+    background-color: #2b2b2b;
+    color: white;
+}
+
+.container {
+    display: flex;
+    flex-direction: row; 
+    padding: 5px;
+}
+
+.column {
+    flex: 1; 
+}
+
+#left-column {
+    display: flex;
+    background-color: #1e1e1e;
+    border-right: 1px solid #333;
+    flex-direction: column; 
+    align-items: center; 
+    flex: 1; 
+    border-radius: 8px;
+}
+
+#right-column {
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    background-color: #1e1e1e;
+    border-left: 1px solid #333;
+    color: white; 
+    border-radius: 8px;
+}
+
+#board {
+    width: 100%; 
+    max-width: 800px; 
+    height: auto;
+}
+
+#controls {
+    margin-top: 10px; 
+}
+
+#controls button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 14px;
+    cursor: pointer;
+    background-color: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+#game-details-header {
+    background-color: #0f0e0e;
+    padding: 10px; 
+    color: #fff; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center;
+    border-radius: 12px; 
+    margin-bottom: 15px; 
+}
+
+#game-details-header .left-section,
+#game-details-header .right-section {
+    flex: 1; 
+    text-align: center; 
+}
+
+#game-details-header .middle-section {
+    flex: 2; 
+    text-align: center; 
+}
+
+.left-section span,
+.right-section span {
+    display: block; 
+    font-size: 1.2em; 
+    font-weight: bold;
+}
+
+#game-black-player,
+#game-white-player {
+    font-size: 1.7em;
+    font-weight: bold;
+}
+
+#game-result {
+    font-size: 2em;
+}
+
+#game-date {
+    font-size: 1em;
+}
+
+#game-site {
+    font-size: 1em;
+}
+
+#pgn-output pre {
+    font-size: 1.6em; /* Povećava veličinu fonta */
+    line-height: 1.6; /* Povećava razmak između redaka za čitljivost */
+    white-space: pre-wrap; /* Omogućuje prelamanje dugačkih linija */
+    width: 100%; /* Rasteže pre na maksimalnu širinu unutar roditeljskog elementa */
+    word-wrap: break-word; /* Omogućuje prelamanje riječi koje su predugačke */
+    text-align: left; /* Tekst poravnava na lijevu stranu */
+    overflow: auto; /* Omogućava scrollanje ako ima previše sadržaja */
+}

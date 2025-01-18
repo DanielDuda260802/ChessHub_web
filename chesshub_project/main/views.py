@@ -1,4 +1,4 @@
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.cache import cache
@@ -10,6 +10,8 @@ import chess
 import chess.pgn
 import io
 import json
+from chess.pgn import read_game
+from io import StringIO
 
 from main.models import Game
 
@@ -182,4 +184,37 @@ def get_games(request):
     cache.set(cache_key, response_data, 1200)
 
     return JsonResponse(response_data)
+
+def game_details(request, game_id):
+    game = get_object_or_404(Game, id=game_id)
+    try:
+        pgn_stream = StringIO(game.notation)
+        read_game(pgn_stream)  
+    except Exception as e:
+        raise ValueError(f"Invalid PGN notation: {str(e)}")
+
+    context = {
+        'game': game,
+    }
+    return render(request, 'game_details.html', context)
+
+def get_game_moves(request, game_id):
+    game = get_object_or_404(Game, id=game_id)
+    try:
+        pgn_stream = StringIO(game.notation)
+        loaded_game = read_game(pgn_stream)
+        board = loaded_game.board()
+
+        moves = []
+        node = loaded_game
+        while not node.is_end():
+            next_node = node.variation(0)
+            moves.append(board.san(next_node.move))
+            board.push(next_node.move)
+            node = next_node
+
+        return JsonResponse({'moves': moves, 'result': game.result})
+    except Exception as e:
+        return JsonResponse({'error': f'Error reading game: {str(e)}'}, status=500)
+
 

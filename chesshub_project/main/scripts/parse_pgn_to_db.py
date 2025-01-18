@@ -12,6 +12,11 @@ def parse_pgn_and_store_in_db(pgn_file_path):
     with open(pgn_file_path, "r", encoding="ISO-8859-1") as pgn_file:
         game = chess.pgn.read_game(pgn_file)
         while game:
+            if game.headers.get("Variant", "") == "Chess960":
+                print("Skipping Chess960 game.")
+                game = chess.pgn.read_game(pgn_file)
+                continue
+
             exporter = chess.pgn.StringExporter(headers=False, variations=False, comments=False)
             notation = game.accept(exporter)
 

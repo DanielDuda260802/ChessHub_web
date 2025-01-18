@@ -20,24 +20,9 @@
         <button id="prev-move" disabled>⟨ Previous</button>
         <button id="next-move" disabled>Next ⟩</button>
     </div>
+    <div id="pgn-output" class="pgn-display"></div>
 </div>
 <div id="center-column" class="column">
-    <div id="game-details-header" class="game-details-header">
-        <div class="left-section">
-            <span id="game-white-player"></span>
-            <span id="game-white-elo">ELO:</span>
-        </div>
-        <div class="middle-section">
-            <span id="game-date"></span>
-            <h2 id="game-result">Result:</h2>
-            <span id="game-site">Site:</span>
-        </div>
-        <div class="right-section">
-            <span id="game-black-player"></span>
-            <span id="game-black-elo">ELO:</span>
-        </div>
-    </div>
-    
     <div id="loader-overlay"></div>
     <div id="loader">
         <div class="spinner"></div>
@@ -57,11 +42,9 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Dinamički se popunjava iz JavaScript-a -->
         </tbody>
     </table>
     <div id="pagination">
-        <!-- Paginacija će se generirati dinamički ovdje -->
     </div>
     
 </div>

@@ -10,6 +10,10 @@ document.addEventListener("DOMContentLoaded", function () {
         onDrop: onDrop
     });
 
+    console.log("Chessboard initialized:", board); 
+    window.board = board; 
+    window.game = game;  
+
 function onDrop(source, target) {
     const move = `${source}${target}`;
     const piece = board.position()[source]; 
@@ -178,7 +182,7 @@ function navigateBack() {
             if (data.fen) {
                 board.position(data.fen);
             }
-            updateButtonStates(); // Ažuriraj stanje gumba
+            updateButtonStates();
         })
         .catch((error) => {
             console.error("Error navigating back:", error.message);
@@ -313,10 +317,10 @@ function selectVariation(index) {
         .then((response) => response.json())
         .then((data) => {
             if (data.fen) {
-                board.position(data.fen); // Ažuriraj ploču
+                board.position(data.fen); 
             }
             if (data.pgn) {
-                updatePGN(data.pgn); // Ažuriraj PGN
+                updatePGN(data.pgn); 
             }
         })
         .catch((error) => console.error("Error selecting variation:", error));
@@ -360,16 +364,12 @@ async function fetchGames(page = 1) {
         renderGames(data.games);
         setupPagination(data.total_pages, data.current_page);
 
-        if (data.games.length > 0) {
-            displayGameDetailsOnTop(data.games[0]);
-        }
     } catch (error) {
         console.error("Error fetching games:", error);
     } finally {
         hideLoader();
     }
 }
-
 
 function renderGames(games) {
     const tableBody = document.querySelector('#game-list-table tbody');
@@ -385,14 +385,18 @@ function renderGames(games) {
             <td>${game.date || 'N/A'}</td>
             <td>${game.site || 'N/A'}</td>
         `;
-        row.addEventListener('click', () => displayGameDetailsOnTop(game)); 
+        row.addEventListener('click', () => {
+            const url = `/game_details/${game.id}/`; 
+            console.log(`Opening game details for Game ID: ${game.id} at ${url}`);
+            window.open(url, '_blank');
+        });
         tableBody.appendChild(row);
     });
 }
 
 function setupPagination(totalPages, currentPage) {
     const pagination = document.querySelector('#pagination');
-    pagination.innerHTML = ''; // Clear previous content
+    pagination.innerHTML = ''; 
 
     const nav = document.createElement('nav');
     const ul = document.createElement('ul');
@@ -406,7 +410,6 @@ function setupPagination(totalPages, currentPage) {
         startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
 
-    // Add 'Previous' button
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
     const prevButton = document.createElement('li');
     prevButton.className = `page-item ${prevDisabled}`;
@@ -418,7 +421,6 @@ function setupPagination(totalPages, currentPage) {
     });
     ul.appendChild(prevButton);
 
-    // Add first page and "..." if needed
     if (startPage > 1) {
         const firstPage = document.createElement('li');
         firstPage.className = 'page-item';
@@ -436,7 +438,6 @@ function setupPagination(totalPages, currentPage) {
         }
     }
 
-    // Add visible page numbers
     for (let i = startPage; i <= endPage; i++) {
         const pageItem = document.createElement('li');
         pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
@@ -445,7 +446,6 @@ function setupPagination(totalPages, currentPage) {
         ul.appendChild(pageItem);
     }
 
-    // Add last page and "..." if needed
     if (endPage < totalPages) {
         if (endPage < totalPages - 1) {
             const dots = document.createElement('li');
@@ -463,7 +463,6 @@ function setupPagination(totalPages, currentPage) {
         ul.appendChild(lastPage);
     }
 
-    // Add 'Next' button
     const nextDisabled = currentPage === totalPages ? 'disabled' : '';
     const nextButton = document.createElement('li');
     nextButton.className = `page-item ${nextDisabled}`;
@@ -479,19 +478,16 @@ function setupPagination(totalPages, currentPage) {
     pagination.appendChild(nav);
 }
 
-function displayGameDetailsOnTop(game) {
-    document.getElementById("game-result").textContent = `${game.result}`;
-    document.getElementById("game-white-player").textContent = `${game.white_player || 'Unknown'}${game.white_title ? ` (${game.white_title})` : ''}`;
-    document.getElementById("game-white-elo").textContent = `ELO: ${game.white_elo}`;
-    document.getElementById("game-black-player").textContent = `${game.black_player || 'Unknown'}${game.black_title ? ` (${game.black_title})` : ''}`;
-    document.getElementById("game-black-elo").textContent = `ELO: ${game.black_elo}`;
-    document.getElementById("game-date").textContent = game.date ? `${game.date}` : '';
-    document.getElementById("game-site").textContent = `Site: ${game.site}`;
+document.addEventListener("DOMContentLoaded", async function () {
+    await fetchGames(currentPage); 
+});
+
+fetchGames(currentPage);
+
+function getCsrfToken() {
+    return document.querySelector("meta[name='csrf-token']").getAttribute("content");
 }
 
 
-document.addEventListener("DOMContentLoaded", async function () {
-    await fetchGames(currentPage); // Fetch all games on load
-});
 
-fetchGames(currentPage); // Prvo učitavanje
+
