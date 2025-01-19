@@ -105,11 +105,12 @@ body {
 }
 
 #pgn-output pre {
-    font-size: 1.6em; /* Povećava veličinu fonta */
-    line-height: 1.6; /* Povećava razmak između redaka za čitljivost */
-    white-space: pre-wrap; /* Omogućuje prelamanje dugačkih linija */
-    width: 100%; /* Rasteže pre na maksimalnu širinu unutar roditeljskog elementa */
-    word-wrap: break-word; /* Omogućuje prelamanje riječi koje su predugačke */
-    text-align: left; /* Tekst poravnava na lijevu stranu */
-    overflow: auto; /* Omogućava scrollanje ako ima previše sadržaja */
+    font-size: 1.2em; 
+    line-height: 1.4;  
+    width: 100%; 
+    word-wrap: break-word; 
+    text-align: left; 
+    overflow: auto; 
+    padding: 2px;
+    border-radius: 5px;
 }

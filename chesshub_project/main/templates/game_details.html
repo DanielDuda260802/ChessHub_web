@@ -1,57 +1,52 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% load static %}
-    <title>Game Details</title>
-    <!-- Javascript -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <link rel="stylesheet" href="{% static 'chessboardjs-1.0.0/css/chessboard-1.0.0.css' %}">
-    <script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
-    <link rel="icon" href="{% static 'favicon.ico' %}">
+{% extends 'base_generic.html' %}
+{% load static %}
 
-    <!-- Css -->
-    <link rel="stylesheet" href="{% static 'css/game_details_style.css' %}">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-</head>
-<body>
-    <div id="container" class="container">
-        <div id="left-column" class="column">
-            <div id="board"></div>
-            <div id="controls">
-                <button id="prev-move" disabled>⟨ Previous</button>
-                <button id="next-move" disabled>Next ⟩</button>
-            </div>
-        </div>
-        <div id="right-column" class="column">
-            <div id="game-details-header" class="game-details-header">
-                <div class="left-section">
-                    <span>White</span>
-                    <p id="game-white-player">{{ game.white_player }}</p>
-                    <p style="font-weight: bold;">ELO: {{ game.white_elo }}</p>
-                </div>
-                <div class="middle-section">
-                    <p id="game-date">Date: {{ game.date }}</p>
-                    <p id="game-result">Result: {{ game.result }}</p>
-                    <p id="game-site">Site: {{ game.site }}</p>
-                </div>
-                <div class="right-section">
-                    <span>Black</span>
-                    <p id="game-black-player">{{ game.black_player }}</p>
-                    <p style="font-weight: bold;">ELO: {{ game.black_elo }}</p>
-                </div>
-            </div>
-            <div id="pgn-output">
-                <pre>{{ game.notation }}</pre>
-            </div>
+{% block title %}Game Details{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/game_details_style.css' %}">
+
+<div id="container" class="container-fluid d-flex vh-100">
+    <div id="left-column" class="column d-flex flex-column align-items-center justify-content-center">
+        <div id="board"></div>
+        <div id="controls" class="mt-3">
+            <button id="prev-move" class="btn btn-secondary" disabled>⟨ Previous</button>
+            <button id="next-move" class="btn btn-secondary" disabled>Next ⟩</button>
         </div>
     </div>
+    <div id="right-column" class="column d-flex flex-column">
+        <div id="game-details-header" class="p-3 rounded border border-light">
+            <div class="left-section text-center">
+                <span>White</span>
+                <p id="game-white-player">{{ game.white_player }}</p>
+                <p style="font-weight: bold;">ELO: {{ game.white_elo }}</p>
+            </div>
+            <div class="middle-section text-center">
+                <p id="game-date">Date: {{ game.date }}</p>
+                <p id="game-result" class="fw-bold text-warning">Result: {{ game.result }}</p>
+                <p id="game-site">Site: {{ game.site }}</p>
+            </div>
+            <div class="right-section text-center">
+                <span>Black</span>
+                <p id="game-black-player">{{ game.black_player }}</p>
+                <p style="font-weight: bold;">ELO: {{ game.black_elo }}</p>
+            </div>
+        </div>
+        <div id="pgn-output">
+            <pre>{{ game.notation }}</pre>
+        </div>
+    </div>
+</div>
+{% endblock %}
 
-    <script type="module" src="{% static 'js/game_details.js' %}"></script>
-    <script type="application/json" id="pgn">
-        {{ game.notation|escapejs|json_script:"pgn" }}
-    </script>
-    <script>
-        const gameId = "{{ game.id }}"; // Uvijek enkodirajte kao string za sigurnost
-    </script>
-</body>
-</html>
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
+<script type="module" src="{% static 'js/game_details.js' %}"></script>
+<script type="application/json" id="pgn">
+    {{ game.notation|escapejs|json_script:"pgn" }}
+</script>
+<script>
+    const gameId = "{{ game.id }}"; 
+</script>
+{% endblock %}

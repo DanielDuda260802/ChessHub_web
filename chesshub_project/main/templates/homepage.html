@@ -1,59 +1,56 @@
-<!DOCTYPE html>
-<html>
-<head>
-    {% load static %}
-    <title>Chess Game</title>
-    <!-- Javascript -->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <link rel="stylesheet" href="{% static 'chessboardjs-1.0.0/css/chessboard-1.0.0.css' %}">
-    <script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
-    <link rel="icon" href="{% static 'favicon.ico' %}">
+{% extends "base_generic.html" %}
+{% load static %}
 
-    <!-- Css -->
-    <link rel="stylesheet" href="{% static 'css/chessboard_style.css' %}">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-</head>
-<body>
-<div id="left-column" class="column">
-    <div id="board"></div>
-    <div id="controls">
-        <button id="prev-move" disabled>⟨ Previous</button>
-        <button id="next-move" disabled>Next ⟩</button>
+{% block title %}Chess Game{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Left Column -->
+        <div id="left-column" class="col-md-4 column">
+            <div id="board"></div>
+            <div id="controls" class="mt-2">
+                <button id="prev-move" class="btn btn-secondary" disabled>⟨ Previous</button>
+                <button id="next-move" class="btn btn-secondary" disabled>Next ⟩</button>
+            </div>
+        </div>
+
+        <!-- Center Column -->
+        <div id="center-column" class="col-md-4 column">
+            <div id="loader-overlay"></div>
+            <div id="loader">
+                <div class="spinner"></div>
+                <p class="loading-text">Loading games...</p>
+            </div>
+
+            <table id="game-list-table" class="table table-dark">
+                <thead>
+                    <tr>
+                        <th>White</th>
+                        <th>White Elo</th>
+                        <th>Black</th>
+                        <th>Black Elo</th>
+                        <th>Result</th>
+                        <th>Date</th>
+                        <th>Site</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <div id="pagination"></div>
+        </div>
+
+        <!-- Right Column -->
+        <div id="right-column" class="col-md-4 column">
+            <h2 class="header">Details</h2>
+        </div>
     </div>
-    <div id="pgn-output" class="pgn-display"></div>
 </div>
-<div id="center-column" class="column">
-    <div id="loader-overlay"></div>
-    <div id="loader">
-        <div class="spinner"></div>
-        <p class="loading-text">Loading games...</p>
-    </div>
+{% endblock %}
 
-    <table id="game-list-table">
-        <thead>
-            <tr>
-                <th>White</th>
-                <th>White Elo</th>
-                <th>Black</th>
-                <th>Black Elo</th>
-                <th>Result</th>
-                <th>Date</th>
-                <th>Site</th>
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
-    <div id="pagination">
-    </div>
-    
-</div>
-
-<div id="right-column" class="column">
-    <h2 class="header">Details</h2>
-</div>
-
-
-    <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script> 
-</body>
-</html>
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+<script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
+<script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script>
+{% endblock %}
