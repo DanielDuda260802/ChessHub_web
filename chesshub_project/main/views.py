@@ -5,6 +5,7 @@ from django.core.cache import cache
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.paginator import Paginator
+from django.contrib.auth.decorators import login_required
 
 import chess
 import chess.pgn
@@ -20,6 +21,7 @@ board = chess.Board()
 game = chess.pgn.Game()
 current_node = game
 
+@login_required(login_url='login/')
 def homepage(request):
     return render(request, 'homepage.html')
 
