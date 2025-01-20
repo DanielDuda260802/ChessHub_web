@@ -308,3 +308,25 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
+# Docker
+*.log
+*.pid
+*.sock
+*.swp
+Dockerfile
+docker-compose.override.yml
+
+# Virtual environment
+venv/
+.env/
+
+# Static and media files
+static/
+media/
+
+# IDE/editor specific files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace

@@ -1,0 +1,13 @@
+services:
+
+  django:
+    container_name: Django
+    build: 
+      context: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes: 
+      - .:/usr/src/app/
+    ports: 
+      - 8001:8000
+    env_file:
+      - .env
