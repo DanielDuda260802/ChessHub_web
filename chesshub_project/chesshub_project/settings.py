@@ -133,6 +133,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("CELERY_BROKER", "redis://redis:6379/0")
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_TASK_ROUTES = {
+    'main.tasks.process_pgn_file': {'queue': 'pgn_queue'},
+    'main.tasks.process_pgn_chunk': {'queue': 'chunk_queue'},
+}
+
 
 
 LOGIN_URL = '/login/'

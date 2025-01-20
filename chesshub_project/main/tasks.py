@@ -20,19 +20,47 @@ def parse_date(date_string):
 
 @shared_task
 def process_pgn_file(pgn_content):
+    """
+    Task to split the PGN file into smaller chunks and delegate them for parallel processing.
+    """
     pgn_io = io.StringIO(pgn_content)
-    game = chess.pgn.read_game(pgn_io)
-    games_added = 0
-    games_skipped = 0
+    games = []
+    chunk_size = 15  # Broj partija po zadatku
+    chunk_count = 0
 
-    while game:
-        if game.headers.get("Variant", "") == "Chess960":
-            games_skipped += 1
-            game = chess.pgn.read_game(pgn_io)
-            continue
-
-        exporter = chess.pgn.StringExporter(headers=False, variations=False, comments=False)
+    while True:
+        game = chess.pgn.read_game(pgn_io)
+        if game is None:
+            break  # Prekid petlje kada više nema partija
+        
+        exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
         notation = game.accept(exporter)
+        games.append(notation)
+
+        # Ako imamo 15 partija, šaljemo ih na obradu
+        if len(games) == chunk_size:
+            process_pgn_chunk.delay(games)
+            games = []
+            chunk_count += 1
+
+    # Obradi preostale partije koje nisu ispunile puni chunk
+    if games:
+        process_pgn_chunk.delay(games)
+        chunk_count += 1
+
+    return f'Submitted {chunk_count} chunks for processing (15 games each).'
+
+@shared_task
+def process_pgn_chunk(games):
+    """
+    Task to process a chunk of PGN games and store them in the database.
+    """
+    games_added = 0
+    for pgn in games:
+        pgn_io = io.StringIO(pgn)
+        game = chess.pgn.read_game(pgn_io)
+        if game.headers.get("Variant", "") == "Chess960":
+            continue  # Preskačemo Chess960 partije
 
         game_data = {
             "site": game.headers.get("Site", ""),
@@ -43,17 +71,10 @@ def process_pgn_file(pgn_content):
             "result": game.headers.get("Result", ""),
             "white_elo": int(game.headers.get("WhiteElo", 0) or 0),
             "black_elo": int(game.headers.get("BlackElo", 0) or 0),
-            "white_title": game.headers.get("WhiteTitle", ""),
-            "black_title": game.headers.get("BlackTitle", ""),
-            "white_FideId": int(game.headers.get("WhiteFideId", 0) or 0),
-            "black_FideId": int(game.headers.get("BlackFideId", 0) or 0),
-            "eco": game.headers.get("ECO", ""),
-            "event_date": parse_date(game.headers.get("EventDate", "")),
-            "notation": notation.strip(),
+            "notation": pgn.strip(),
         }
 
         Game.objects.create(**game_data)
         games_added += 1
-        game = chess.pgn.read_game(pgn_io)
 
-    return f'PGN processed: {games_added} games added, {games_skipped} skipped (Chess960).'
+    return f'Chunk processed: {games_added} games added.'

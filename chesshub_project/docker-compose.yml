@@ -16,11 +16,24 @@ services:
     depends_on:
       - redis
 
-  celery:
-    container_name: celery
+  celery-pgn:
+    container_name: celery-pgn
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=10
+    command: celery --app=chesshub_project worker -l INFO --concurrency=16 -Q pgn_queue
+    volumes: 
+      - .:/usr/src/app/
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - django
+
+  celery-chunk:
+    container_name: celery-chunk
+    build: 
+      context: .
+    command: celery --app=chesshub_project worker -l INFO --concurrency=16 -Q chunk_queue
     volumes: 
       - .:/usr/src/app/
     env_file:
