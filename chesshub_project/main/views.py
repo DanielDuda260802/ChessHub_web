@@ -6,6 +6,10 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
+from datetime import datetime
+
+from celery.result import AsyncResult
+from celery.result import AsyncResult
 
 import chess
 import chess.pgn
@@ -15,6 +19,7 @@ from chess.pgn import read_game
 from io import StringIO
 
 from main.models import Game
+from .tasks import process_pgn_file
 
 board = chess.Board()
 
@@ -219,4 +224,27 @@ def get_game_moves(request, game_id):
     except Exception as e:
         return JsonResponse({'error': f'Error reading game: {str(e)}'}, status=500)
 
+def upload_pgn(request):
+    if request.method == 'POST' and request.FILES.get('pgn_file'):
+        pgn_file = request.FILES['pgn_file']
+        pgn_content = pgn_file.read().decode('ISO-8859-1')
+
+        task = process_pgn_file.delay(pgn_content)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'PGN file processing has started.',
+            'task_id': task.id
+        })
+
+    return JsonResponse({'success': False, 'error': 'Invalid request'})
+
+def check_task_status(request, task_id):
+    result = AsyncResult(task_id)
+    response_data = {
+        'task_id': task_id,
+        'status': result.status,  
+        'result': result.result   
+    }
+    return JsonResponse(response_data)
 
