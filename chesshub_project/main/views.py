@@ -9,7 +9,6 @@ from django.contrib.auth.decorators import login_required
 from datetime import datetime
 
 from celery.result import AsyncResult
-from celery.result import AsyncResult
 
 import chess
 import chess.pgn
@@ -150,47 +149,42 @@ def choose_variation(request):
         except Exception as e:
             print("Greška pri odabiru varijacije:", str(e))
             return JsonResponse({"error": str(e)}, status=400)
-
+            
 def get_games(request):
     page = int(request.GET.get('page', 1))
     page_size = 100
 
     total_pages_key = 'games_total_pages'
-    total_pages = cache.get(total_pages_key)
+    total_games = Game.objects.count()
 
-    if not total_pages:
-        games = Game.objects.only(
-            'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
-        ).order_by('-date')
-        paginator = Paginator(games, page_size)
-        total_pages = paginator.num_pages
-        cache.set(total_pages_key, total_pages, 1200)
+    total_pages = (total_games // page_size) + (1 if total_games % page_size else 0)
+    cache.set(total_pages_key, total_pages, 1200)
+    print(f"[CACHE UPDATE] Total pages updated to {total_pages}")
 
     cache_key = f'games_page_{page}'
     cached_data = cache.get(cache_key)
 
-    if cached_data:
-        return JsonResponse(cached_data)
+    if page == 1 or not cached_data:
+        print(f"[CACHE MISS] Fetching data from database for page {page}")
+        games = Game.objects.all().order_by('id')
+        paginator = Paginator(games, page_size)
+        page_obj = paginator.get_page(page)
 
-    games = Game.objects.only(
-        'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
-    ).order_by('-date')
-    paginator = Paginator(games, page_size)
-    page_obj = paginator.get_page(page)
+        games_list = list(page_obj.object_list.values(
+            'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+        ))
 
-    games_list = list(page_obj.object_list.values(
-        'id', 'white_player', 'white_elo', 'white_title', 'black_player', 'black_elo', 'black_title', 'result', 'date', 'site'
-    ))
+        response_data = {
+            'games': games_list,
+            'total_pages': total_pages,
+            'current_page': page
+        }
 
-    response_data = {
-        'games': games_list,
-        'total_pages': total_pages,
-        'current_page': page
-    }
+        cache.set(cache_key, response_data, 1200)
+        return JsonResponse(response_data)
 
-    cache.set(cache_key, response_data, 1200)
-
-    return JsonResponse(response_data)
+    print(f"[CACHE HIT] Returning cached data for page {page}")
+    return JsonResponse(cached_data)
 
 def game_details(request, game_id):
     game = get_object_or_404(Game, id=game_id)
@@ -248,3 +242,7 @@ def check_task_status(request, task_id):
     }
     return JsonResponse(response_data)
 
+def refresh_game_cache():
+    total_games = Game.objects.count()
+    total_pages = (total_games // 100) + (1 if total_games % 100 else 0)
+    cache.set('games_total_pages', total_pages, 1200)

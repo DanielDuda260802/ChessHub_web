@@ -398,6 +398,8 @@ function setupPagination(totalPages, currentPage) {
     const pagination = document.querySelector('#pagination');
     pagination.innerHTML = ''; 
 
+    console.log(`Pagination initialized: Total Pages: ${totalPages}, Current Page: ${currentPage}`);
+
     const nav = document.createElement('nav');
     const ul = document.createElement('ul');
     ul.classList.add('pagination');
@@ -484,8 +486,70 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 fetchGames(currentPage);
 
-function getCsrfToken() {
-    return document.querySelector("meta[name='csrf-token']").getAttribute("content");
+if (!window.socket) {
+    window.socket = new WebSocket("ws://localhost:8001/ws/games/");
+}
+
+socket.onopen = function() {
+    console.log("Connected to WebSocket Server");
+};
+
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+
+    if (data.games) {
+        console.log("Received updated game list:", data.games);
+
+        if (data.total_pages) {
+            currentPage = data.total_pages; 
+            setupPagination(data.total_pages, currentPage);
+        }
+        updateGameTable(data.games);
+    }
+};
+
+let reconnectAttempts = 0;
+const maxReconnectAttempts = 3;
+
+socket.onclose = function() {
+    console.log("Disconnected from WebSocket server, attempting to reconnect...");
+    
+    if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+    } else {
+        console.error("Max reconnect attempts reached. Please check your connection.");
+    }
+};
+
+
+function updateGameTable(newGames, currentPage) {
+    const tableBody = document.querySelector('#game-list-table tbody');
+    const pageIndicator = document.getElementById('pagination');
+
+    if (currentPage > 1) {
+        newGames.forEach(game => {
+            const existingRow = document.querySelector(`#game-${game.id}`);
+            if (!existingRow) {
+                const row = document.createElement('tr');
+                row.id = `game-${game.id}`;
+                row.innerHTML = `
+                    <td>${game.white_player || 'Unknown'}</td>
+                    <td>${game.white_elo || 'N/A'}</td>
+                    <td>${game.black_player || 'Unknown'}</td>
+                    <td>${game.black_elo || 'N/A'}</td>
+                    <td>${game.result || 'N/A'}</td>
+                    <td>${game.date || 'N/A'}</td>
+                    <td>${game.site || 'N/A'}</td>
+                `;
+                tableBody.appendChild(row);
+            }
+        });
+
+        pageIndicator.innerHTML = `Page: ${currentPage}`;
+    }
 }
 
 

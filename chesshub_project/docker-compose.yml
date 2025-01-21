@@ -6,7 +6,7 @@ services:
     container_name: Django
     build: 
       context: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: uvicorn chesshub_project.asgi:application --host 0.0.0.0 --port 8000 --workers 4
     volumes: 
       - .:/usr/src/app/
     ports: 
@@ -15,6 +15,7 @@ services:
       - .env
     depends_on:
       - redis
+      - db
 
   celery-pgn:
     container_name: celery-pgn
@@ -28,6 +29,7 @@ services:
     depends_on:
       - redis
       - django
+      - db
 
   celery-chunk:
     container_name: celery-chunk
@@ -41,3 +43,17 @@ services:
     depends_on:
       - redis
       - django
+      - db
+
+  db:
+    image: postgres:14
+    container_name: postgres_db
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

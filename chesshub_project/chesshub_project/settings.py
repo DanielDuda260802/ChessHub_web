@@ -38,8 +38,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main.apps.MainConfig',
-    'loginApp.apps.LoginappConfig'
+    'loginApp.apps.LoginappConfig',
+    'channels'
 ]
+
+ASGI_APPLICATION = "chesshub_project.asgi.application"
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -138,9 +141,15 @@ CELERY_TASK_ROUTES = {
     'main.tasks.process_pgn_chunk': {'queue': 'chunk_queue'},
 }
 
-
-
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
  
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
+}
