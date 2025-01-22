@@ -19,3 +19,10 @@ class Game(models.Model):
 
     def __str__(self):
         return f"{self.white} vs {self.black} ({self.date})"
+
+class PGNFile(models.Model):
+    file = models.FileField(upload_to='pgn_files/')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.file.name

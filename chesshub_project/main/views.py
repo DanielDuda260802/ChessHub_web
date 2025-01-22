@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
+from django.core.files.storage import default_storage
 
 from celery.result import AsyncResult
 
@@ -18,7 +19,7 @@ from chess.pgn import read_game
 from io import StringIO
 
 from main.models import Game
-from .tasks import process_pgn_file
+from .tasks import upload_pgn_to_storage
 
 board = chess.Board()
 
@@ -221,14 +222,16 @@ def get_game_moves(request, game_id):
 def upload_pgn(request):
     if request.method == 'POST' and request.FILES.get('pgn_file'):
         pgn_file = request.FILES['pgn_file']
-        pgn_content = pgn_file.read().decode('ISO-8859-1')
+        file_path = f"pgn_uploads/{pgn_file.name}"
 
-        task = process_pgn_file.delay(pgn_content)
+        saved_path = default_storage.save(file_path, pgn_file)
+        upload_pgn_to_storage.apply_async(args=[saved_path])
+        file_url = default_storage.url(saved_path)
 
         return JsonResponse({
             'success': True,
-            'message': 'PGN file processing has started.',
-            'task_id': task.id
+            'message': 'PGN file uploaded successfully.',
+            'file_url': file_url
         })
 
     return JsonResponse({'success': False, 'error': 'Invalid request'})

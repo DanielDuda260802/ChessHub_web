@@ -552,6 +552,54 @@ function updateGameTable(newGames, currentPage) {
     }
 }
 
+function getCsrfToken() {
+    let csrfToken = document.cookie.match(/csrftoken=([^;]*)/);
+    return csrfToken ? csrfToken[1] : '';
+}
 
+document.getElementById('pgn-file').addEventListener('change', async function(event) {
+    let file = event.target.files[0];
+    if (!file) {
+        alert("Please select a PGN file.");
+        return;
+    }
+
+    let fileName = file.name.toLowerCase();
+    if (!fileName.endsWith('.pgn')) {
+        alert("Only PGN files (.pgn) are allowed!");
+        document.getElementById('pgn-file').value = ''; 
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append('pgn_file', file);
+
+    function getCsrfToken() {
+        let csrfToken = document.cookie.match(/csrftoken=([^;]*)/);
+        return csrfToken ? csrfToken[1] : '';
+    }
+
+    try {
+        let uploadUrl = document.getElementById('pgn-file').dataset.uploadUrl;
+        let response = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()  // Dodavanje CSRF tokena u zahtjev
+            }
+        });
+
+        let result = await response.json();
+        if (result.success) {
+            alert("PGN file successfully uploaded!");
+            location.reload();
+        } else {
+            alert("Error uploading PGN file: " + result.error);
+        }
+    } catch (error) {
+        console.error("Upload failed", error);
+        alert("An error occurred while uploading.");
+    }
+});
 
 

@@ -17,33 +17,53 @@ services:
       - redis
       - db
 
-  celery-pgn:
-    container_name: celery-pgn
+  celery-upload:
+    container_name: celery-upload
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=16 -Q pgn_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=4 -Q upload_queue
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
-      - django
-      - db
+
+  celery-fetch:
+    container_name: celery-fetch
+    build: 
+      context: .
+    command: celery --app=chesshub_project worker -l INFO --concurrency=2 -Q fetch_queue
+    volumes: 
+      - .:/usr/src/app/
+    env_file:
+      - .env
+    depends_on:
+      - redis
+
+  celery-process:
+    container_name: celery-process
+    build: 
+      context: .
+    command: celery --app=chesshub_project worker -l INFO --concurrency=4 -Q process_queue
+    volumes: 
+      - .:/usr/src/app/
+    env_file:
+      - .env
+    depends_on:
+      - redis
 
   celery-chunk:
     container_name: celery-chunk
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=16 -Q chunk_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=6 -Q chunk_queue
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
-      - django
-      - db
 
   db:
     image: postgres:14
