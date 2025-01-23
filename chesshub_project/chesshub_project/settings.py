@@ -1,8 +1,14 @@
 from pathlib import Path
 import os
 from decouple import config
+from celery.schedules import crontab
 import dj_database_url
 import environ
+from dotenv import load_dotenv
+
+load_dotenv()
+
+REDIS_URL = os.getenv('REDIS_URL', 'redis://redis:6379/0')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -158,6 +164,12 @@ CELERY_TASK_ROUTES = {
     'main.tasks.fetch_pgn_files_from_storage': {'queue': 'fetch_queue'},
 }
 
+CELERY_BEAT_SCHEDULE = {
+    'refresh_redis_cache_task': {
+        'task': 'main.tasks.refresh_redis_cache',
+        'schedule': crontab(minute='*/30'),
+    },
+}
 
 LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
