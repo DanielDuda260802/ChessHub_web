@@ -338,6 +338,7 @@ function getCsrfToken() {
 
 /* GAME LIST **/
 let currentPage = 1
+let filters = {};
 
 function showLoader(text = "Loading games...") {
     const loader = document.getElementById("loader");
@@ -357,8 +358,16 @@ function hideLoader() {
 async function fetchGames(page = 1) {
     showLoader();
 
+    let queryParams = new URLSearchParams(filters);
+    queryParams.append('page', page);
+
+    const endpoint = Object.keys(filters).length > 0 ? 
+        `/filtered_games/?${queryParams.toString()}` : 
+        `/get_games/?page=${page}`;
+
+
     try {
-        const response = await fetch(`/get_games/?page=${page}`);
+        const response = await fetch(endpoint);
         const data = await response.json();
 
         renderGames(data.games);
@@ -366,6 +375,7 @@ async function fetchGames(page = 1) {
 
     } catch (error) {
         console.error("Error fetching games:", error);
+        document.querySelector('#game-list-table tbody').innerHTML = '<tr><td colspan="7">Greška pri dohvaćanju podataka.</td></tr>';
     } finally {
         hideLoader();
     }
@@ -419,7 +429,7 @@ function setupPagination(totalPages, currentPage) {
         <a class="page-link" href="#" aria-label="Previous">&laquo;</a>
     `;
     prevButton.addEventListener('click', () => {
-        if (currentPage > 1) fetchGames(currentPage - 1);
+        if (currentPage > 1) fetchGames(currentPage - 1, Object.keys(filters).length > 0);
     });
     ul.appendChild(prevButton);
 
@@ -444,7 +454,7 @@ function setupPagination(totalPages, currentPage) {
         const pageItem = document.createElement('li');
         pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
         pageItem.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-        pageItem.addEventListener('click', () => fetchGames(i));
+        pageItem.addEventListener('click', () => fetchGames(i, Object.keys(filters).length > 0));
         ul.appendChild(pageItem);
     }
 
@@ -472,7 +482,7 @@ function setupPagination(totalPages, currentPage) {
         <a class="page-link" href="#" aria-label="Next">&raquo;</a>
     `;
     nextButton.addEventListener('click', () => {
-        if (currentPage < totalPages) fetchGames(currentPage + 1);
+        if (currentPage < totalPages) fetchGames(currentPage + 1, Object.keys(filters).length > 0);
     });
     ul.appendChild(nextButton);
 
@@ -484,7 +494,20 @@ document.addEventListener("DOMContentLoaded", async function () {
     await fetchGames(currentPage); 
 });
 
-fetchGames(currentPage);
+document.getElementById('filter-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    
+    filters = {};  // Resetiranje filtera
+
+    const formData = new FormData(this);
+    formData.forEach((value, key) => {
+        if (value.trim() !== '') {
+            filters[key] = value;
+        }
+    });
+
+    fetchGames(1, true);
+});
 
 if (!window.socket) {
     window.socket = new WebSocket("ws://localhost:8001/ws/games/");

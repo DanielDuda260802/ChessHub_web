@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import game_details, get_game_moves, upload_pgn, get_games
+from .views import game_details, get_game_moves, upload_pgn, get_games, filtered_games
 
 app_name = 'main'  
 
@@ -17,5 +17,6 @@ urlpatterns = [
     path('get_game_moves/<int:game_id>/', get_game_moves, name='get_game_moves'),
     path('upload-pgn/', upload_pgn, name='upload_pgn'),
     path('task-status/<str:task_id>/', views.check_task_status, name='task_status'),
-    path('api/games/', get_games, name='get_games')
+    path('api/games/', get_games, name='get_games'),
+    path('filtered_games/', filtered_games, name='filtered_games'),
 ]

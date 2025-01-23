@@ -8,6 +8,7 @@ from django.core.paginator import Paginator
 from django.contrib.auth.decorators import login_required
 from datetime import datetime
 from django.core.files.storage import default_storage
+from django.db.models import Q
 
 from celery.result import AsyncResult
 
@@ -249,3 +250,58 @@ def refresh_game_cache():
     total_games = Game.objects.count()
     total_pages = (total_games // 100) + (1 if total_games % 100 else 0)
     cache.set('games_total_pages', total_pages, 1200)
+
+def filtered_games(request):
+    games = Game.objects.all()
+
+    sort_by_date = request.GET.get('sort_by_date', '-date')
+    allowed_sort_fields = ['date', '-date']
+    if sort_by_date not in allowed_sort_fields:
+        sort_by_date = '-date'
+
+    white_elo_filter = request.GET.get('white_elo_filter')
+    white_elo_value = request.GET.get('white_elo')
+
+    if white_elo_filter and white_elo_value:
+        if white_elo_filter == "exact":
+            games = games.filter(white_elo=white_elo_value)
+        elif white_elo_filter == "gte":
+            games = games.filter(white_elo__gte=white_elo_value)
+        elif white_elo_filter == "lte":
+            games = games.filter(white_elo__lte=white_elo_value)
+
+    black_elo_filter = request.GET.get('black_elo_filter')
+    black_elo_value = request.GET.get('black_elo')
+
+    if black_elo_filter and black_elo_value:
+        if black_elo_filter == "exact":
+            games = games.filter(black_elo=black_elo_value)
+        elif black_elo_filter == "gte":
+            games = games.filter(black_elo__gte=black_elo_value)
+        elif black_elo_filter == "lte":
+            games = games.filter(black_elo__lte=black_elo_value)
+
+    date_from = request.GET.get('date_from')
+    date_to = request.GET.get('date_to')
+    if date_from and date_to:
+        games = games.filter(date__range=[date_from, date_to])
+
+    result = request.GET.get('result')
+    if result:
+        games = games.filter(result=result)
+
+    games = games.order_by(sort_by_date)
+
+    page_number = request.GET.get('page', 1)
+    paginator = Paginator(games, 100)
+    page_obj = paginator.get_page(page_number)
+
+    games_list = list(page_obj.object_list.values('white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'))
+
+    return JsonResponse({
+        'games': games_list,
+        'total_pages': paginator.num_pages,
+        'current_page': page_obj.number
+    })
+
+

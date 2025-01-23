@@ -5,7 +5,6 @@
 
 {% block content %}
     {% if user.is_authenticated %}
-
         <div class="container-fluid">
             <div class="row">
                 <!-- Left Column -->
@@ -14,13 +13,71 @@
                     <div id="controls" class="mt-2 d-flex justify-content-between">
                         <button id="prev-move" class="btn btn-secondary" disabled>⟨ Previous</button>
                         <button id="next-move" class="btn btn-secondary" disabled>Next ⟩</button>
-                        <input type="file" id="pgn-file" accept=".pgn" style="display: none;" data-upload-url="{% url 'main:upload_pgn' %}">
-                        <button id="import-pgn" class="btn btn-primary" onclick="document.getElementById('pgn-file').click();">Import PGN</button>
+                        <input type="file" id="pgn-file" accept=".pgn" style="display: none;" 
+                               data-upload-url="{% url 'main:upload_pgn' %}">
+                        <button id="import-pgn" class="btn btn-primary" onclick="document.getElementById('pgn-file').click();">
+                            Import PGN
+                        </button>
                     </div>
                 </div>
 
                 <!-- Center Column -->
                 <div id="center-column" class="col-md-4 column">
+                    <div class="filter-sort-container mb-3">
+                        <form id="filter-form" class="d-flex flex-wrap gap-2">
+                            <div class="form-group">
+                                <label for="sort_by_date">Sortiraj po datumu:</label>
+                                <select name="sort_by_date" id="sort_by_date" class="form-control">
+                                    <option value="-date">Najnovije prvo</option>
+                                    <option value="date">Najstarije prvo</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="date_from">Datum od:</label>
+                                <input type="date" name="date_from" id="date_from" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="date_to">Datum do:</label>
+                                <input type="date" name="date_to" id="date_to" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="white_elo_filter">Bijeli Elo:</label>
+                                <div class="d-flex gap-2">
+                                    <select name="white_elo_filter" id="white_elo_filter" class="form-control">
+                                        <option value="exact">Točno</option>
+                                        <option value="gte">Veće ili jednako</option>
+                                        <option value="lte">Manje ili jednako</option>
+                                    </select>
+                                    <input type="number" name="white_elo" id="white_elo" class="form-control" placeholder="Unesi vrijednost">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="black_elo_filter">Crni Elo:</label>
+                                <div class="d-flex gap-2">
+                                    <select name="black_elo_filter" id="black_elo_filter" class="form-control">
+                                        <option value="exact">Točno</option>
+                                        <option value="gte">Veće ili jednako</option>
+                                        <option value="lte">Manje ili jednako</option>
+                                    </select>
+                                    <input type="number" name="black_elo" id="black_elo" class="form-control" placeholder="Unesi vrijednost">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="result">Rezultat:</label>
+                                <select name="result" id="result" class="form-control">
+                                    <option value="">Svi rezultati</option>
+                                    <option value="1-0">Bijeli pobjeđuje</option>
+                                    <option value="0-1">Crni pobjeđuje</option>
+                                    <option value="1/2-1/2">Remi</option>
+                                </select>
+                            </div>
+                            <div class="form-group align-self-end">
+                                <button type="submit" class="btn btn-primary">Primijeni</button>
+                                <button type="reset" class="btn btn-secondary" id="reset-filters">Reset</button>
+                            </div>
+                        </form>
+                    </div>
+
                     <div id="loader-overlay"></div>
                     <div id="loader">
                         <div class="spinner"></div>
@@ -39,8 +96,7 @@
                                 <th>Site</th>
                             </tr>
                         </thead>
-                        <tbody>
-                        </tbody>
+                        <tbody></tbody>
                     </table>
 
                     <div id="pagination"></div>
@@ -54,11 +110,10 @@
         </div>
 
         {% block extra_js %}
-        <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-        <script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
-        <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script>
+            <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+            <script src="{% static 'chessboardjs-1.0.0/js/chessboard-1.0.0.min.js' %}"></script>
+            <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script>
         {% endblock %}
-        
     {% else %}
         <div class="container vh-100 d-flex justify-content-center align-items-center text-center">
             <div>
