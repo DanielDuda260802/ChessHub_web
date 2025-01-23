@@ -45,7 +45,7 @@ services:
     container_name: celery-process
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=4 -Q process_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=2 -Q process_queue
     volumes: 
       - .:/usr/src/app/
     env_file:
@@ -57,7 +57,7 @@ services:
     container_name: celery-chunk
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=6 -Q chunk_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=8 -Q chunk_queue
     volumes: 
       - .:/usr/src/app/
     env_file:

@@ -601,5 +601,3 @@ document.getElementById('pgn-file').addEventListener('change', async function(ev
         alert("An error occurred while uploading.");
     }
 });
-
-

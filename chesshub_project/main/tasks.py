@@ -24,98 +24,6 @@ def parse_date(date_string):
         pass
     return None
 
-
-# @shared_task(queue='pgn_queue')
-# def process_pgn_file(pgn_file_path):
-#     logger.info(f"Processing PGN file: {pgn_file_path}")
-
-#     try:
-#         with default_storage.open(pgn_file_path, 'rb') as pgn_file:
-#             pgn_content = pgn_file.read().decode('utf-8')
-#     except Exception as e:
-#         logger.error(f"Error reading PGN file from Azure Storage: {str(e)}")
-#         return f"Error reading file: {str(e)}"
-
-#     pgn_io = io.StringIO(pgn_content)
-#     games = []
-#     chunk_size = 15  
-#     chunk_count = 0
-
-#     while True:
-#         game = chess.pgn.read_game(pgn_io)
-#         if game is None:
-#             break 
-
-#         exporter = chess.pgn.StringExporter(headers=True, variations=False, comments=False)
-#         notation = game.accept(exporter)
-#         games.append(notation)
-
-#         if len(games) == chunk_size:
-#             logger.info(f"Sending chunk {chunk_count + 1} to processing queue")
-#             process_pgn_chunk.apply_async(args=[games], queue='chunk_queue')
-#             games = []
-#             chunk_count += 1
-
-#     if games:
-#         logger.info("Sending final chunk to processing queue")
-#         process_pgn_chunk.apply_async(args=[games], queue='chunk_queue')
-#         chunk_count += 1
-
-#     logger.info(f"Total {chunk_count} chunks submitted for processing")
-#     return f"Submitted {chunk_count} chunks for processing."
-
-# @shared_task(queue='chunk_queue')
-# def process_pgn_chunk(games):
-#     logger.info(f"Processing chunk of {len(games)} games...")
-
-#     games_added = 0
-#     processed_games = []
-
-#     for pgn in games:
-#         pgn_io = io.StringIO(pgn)
-#         game = chess.pgn.read_game(pgn_io)
-
-#         if game.headers.get("Variant", "") == "Chess960":
-#             logger.info("Skipping Chess960 game.")
-#             continue  
-
-#         game_instance = Game.objects.create(
-#             site=game.headers.get("Site", ""),
-#             date=parse_date(game.headers.get("Date", "")),
-#             round=game.headers.get("Round", ""),
-#             white_player=game.headers.get("White", ""),
-#             black_player=game.headers.get("Black", ""),
-#             result=game.headers.get("Result", ""),
-#             white_elo=int(game.headers.get("WhiteElo", 0) or 0),
-#             black_elo=int(game.headers.get("BlackElo", 0) or 0),
-#             notation=pgn.strip(),
-#         )
-
-#         games_added += 1
-
-#         processed_games.append({
-#             "id": game_instance.id,
-#             "white_player": game_instance.white_player,
-#             "white_elo": game_instance.white_elo,
-#             "black_player": game_instance.black_player,
-#             "black_elo": game_instance.black_elo,
-#             "result": game_instance.result,
-#             "date": str(game_instance.date),
-#             "site": game_instance.site
-#         })
-
-#     logger.info(f"Stored {games_added} games in database:")
-#     for game in processed_games:
-#         logger.info(game)
-
-#     update_cache_with_games(processed_games)
-
-#     broadcast_games(processed_games)
-
-#     logger.info(f"Broadcasting {len(processed_games)} new games to clients.")
-
-#     return f'Chunk processed: {games_added} games added and broadcasted.'
-
 def update_cache_with_games(games):
     page_size = 100
     total_games = Game.objects.count()
@@ -162,12 +70,10 @@ def upload_pgn_to_storage(pgn_file_path):
     logger.info(f"Uploading PGN file to Azure Storage: {pgn_file_path}")
 
     try:
-        # Provjera da li datoteka postoji
         if not default_storage.exists(pgn_file_path):
             logger.error(f"File not found: {pgn_file_path}")
             return f"File {pgn_file_path} not found"
 
-        # Pokretanje obrade
         fetch_pgn_files_from_storage.apply_async()
 
         return f"File {pgn_file_path} uploaded and queued for processing."
@@ -179,9 +85,6 @@ def upload_pgn_to_storage(pgn_file_path):
 
 @shared_task(queue='fetch_queue')
 def fetch_pgn_files_from_storage():
-    """
-    Dohvaća listu neobrađenih PGN datoteka s Azure Storage i stavlja ih u red za obradu.
-    """
     logger.info("Fetching PGN files from Azure Storage...")
 
     try:
@@ -215,7 +118,6 @@ def process_pgn_queue(pgn_file_path):
             if game is None:
                 break
 
-            # Provjera za Chess960 varijantu
             if game.headers.get("Variant", "") == "Chess960":
                 logger.info("Skipping Chess960 game.")
                 continue  
@@ -237,7 +139,6 @@ def process_pgn_queue(pgn_file_path):
 
         logger.info(f"Total {chunk_count} chunks submitted for processing")
 
-        # Premještanje obrađene datoteke
         move_processed_pgn_file(corrected_path)
 
     except Exception as e:
@@ -249,6 +150,7 @@ def process_pgn_chunk(games):
 
     games_added = 0
     processed_games = []
+    new_games = []
 
     for pgn in games:
         pgn_io = io.StringIO(pgn)
@@ -258,7 +160,7 @@ def process_pgn_chunk(games):
             logger.info("Skipping Chess960 game.")
             continue  
 
-        game_instance = Game.objects.create(
+        new_games.append(Game(
             site=game.headers.get("Site", ""),
             date=parse_date(game.headers.get("Date", "")),
             round=game.headers.get("Round", ""),
@@ -268,24 +170,24 @@ def process_pgn_chunk(games):
             white_elo=int(game.headers.get("WhiteElo", 0) or 0),
             black_elo=int(game.headers.get("BlackElo", 0) or 0),
             notation=pgn.strip(),
-        )
+        ))
 
         games_added += 1
 
         processed_games.append({
-            "id": game_instance.id,
-            "white_player": game_instance.white_player,
-            "white_elo": game_instance.white_elo,
-            "black_player": game_instance.black_player,
-            "black_elo": game_instance.black_elo,
-            "result": game_instance.result,
-            "date": str(game_instance.date),
-            "site": game_instance.site
+            "white_player": game.headers.get("White", ""),
+            "white_elo": game.headers.get("WhiteElo", 0),
+            "black_player": game.headers.get("Black", ""),
+            "black_elo": game.headers.get("BlackElo", 0),
+            "result": game.headers.get("Result", ""),
+            "date": game.headers.get("Date", ""),
+            "site": game.headers.get("Site", "")
         })
 
-    logger.info(f"Stored {games_added} games in database:")
-    for game in processed_games:
-        logger.info(game)
+    if new_games:
+        Game.objects.bulk_create(new_games, batch_size=500)
+        games_added = len(new_games)
+        logger.info(f"Stored {games_added} games in database.")
 
     update_cache_with_games(processed_games)
     broadcast_games(processed_games)
@@ -294,9 +196,6 @@ def process_pgn_chunk(games):
     return f'Chunk processed: {games_added} games added and broadcasted.'
 
 def move_processed_pgn_file(file_path):
-    """
-    Premješta obrađenu datoteku u 'processed_pgns' folder.
-    """
     new_path = file_path.replace("pgn_uploads", "processed_pgns")
     default_storage.save(new_path, default_storage.open(file_path))
     default_storage.delete(file_path)
