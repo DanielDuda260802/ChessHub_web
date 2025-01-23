@@ -41,6 +41,22 @@ class Game(models.Model):
         ordering = ['-date']
 
 
+class FENPosition(models.Model):
+    fen_string = models.CharField(max_length=100, db_index=True)
+    game = models.ForeignKey(Game, on_delete=models.CASCADE)
+    move_number = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['fen_string']),
+            models.Index(fields=['game']),
+        ]
+
+    def __str__(self):
+        return f"FEN: {self.fen_string} - Game: {self.game_id} - Move: {self.move_number}"
+
+
 class PGNFile(models.Model):
     file = models.FileField(upload_to='pgn_files/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
