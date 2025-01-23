@@ -1,15 +1,23 @@
 import logging
 from celery import shared_task
-import chess.pgn
-import io
-from .models import Game
+import redis
 from datetime import datetime
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+
+import chess.pgn
+import io
+
+from .models import Game, FENPosition
+from .utils import cache_fen_position
+
 from django.core.cache import cache
 from django.core.files.storage import default_storage
+from django.conf import settings
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
+redis_client = redis.Redis.from_url(settings.REDIS_URL)
 
 def parse_date(date_string):
     if not date_string or date_string == "?":
@@ -151,6 +159,7 @@ def process_pgn_chunk(games):
     games_added = 0
     processed_games = []
     new_games = []
+    new_fen_positions = []
 
     for pgn in games:
         pgn_io = io.StringIO(pgn)
@@ -160,7 +169,7 @@ def process_pgn_chunk(games):
             logger.info("Skipping Chess960 game.")
             continue  
 
-        new_games.append(Game(
+        game_instance = Game(
             site=game.headers.get("Site", ""),
             date=parse_date(game.headers.get("Date", "")),
             round=game.headers.get("Round", ""),
@@ -170,9 +179,47 @@ def process_pgn_chunk(games):
             white_elo=int(game.headers.get("WhiteElo", 0) or 0),
             black_elo=int(game.headers.get("BlackElo", 0) or 0),
             notation=pgn.strip(),
-        ))
+        )
+        new_games.append(game_instance)
 
         games_added += 1
+
+        board = chess.Board()
+        move_count = 0
+        
+        fen = board.fen()
+        new_fen_positions.append(FENPosition(
+            fen_string=fen,
+            game=game_instance,
+            move_number=move_count
+        ))
+        cache_fen_position(fen, game_instance.id)
+
+        move_count += 1
+
+        for move in game.mainline_moves():
+            try:
+                if board.is_legal(move):
+                    board.push(move)
+                else:
+                    logger.warning(f"Illegal move {move}, skipping game.")
+                    break
+            except AssertionError as e:
+                logger.error(f"Error applying move {move}: {e}")
+                break
+
+            fen = board.fen()
+            new_fen_positions.append(FENPosition(
+                fen_string=fen,
+                game=game_instance,
+                move_number=move_count
+            ))
+            cache_fen_position(fen, game_instance.id)
+
+            move_count += 1
+
+        games_added += 1
+
 
         processed_games.append({
             "white_player": game.headers.get("White", ""),
@@ -185,9 +232,18 @@ def process_pgn_chunk(games):
         })
 
     if new_games:
-        Game.objects.bulk_create(new_games, batch_size=500)
-        games_added = len(new_games)
-        logger.info(f"Stored {games_added} games in database.")
+        with transaction.atomic():
+            saved_games = Game.objects.bulk_create(new_games, batch_size=500)
+
+            for idx, game_instance in enumerate(saved_games):
+                for fen_pos in new_fen_positions:
+                    if fen_pos.game == new_games[idx]:
+                        fen_pos.game = game_instance
+                        cache_fen_position(fen_pos.fen_string, game_instance.id)
+
+            FENPosition.objects.bulk_create(new_fen_positions, batch_size=500)
+
+        logger.info(f"Stored {games_added} games and {len(new_fen_positions)} FEN positions in database.")
 
     update_cache_with_games(processed_games)
     broadcast_games(processed_games)
@@ -200,3 +256,18 @@ def move_processed_pgn_file(file_path):
     default_storage.save(new_path, default_storage.open(file_path))
     default_storage.delete(file_path)
     logger.info(f"Moved processed file to: {new_path}")
+
+@shared_task
+def sync_fen_to_redis():
+    all_fen_positions = FENPosition.objects.all()
+    for position in all_fen_positions:
+        redis_client.sadd(f"fen:{position.fen_string}", position.game_id.id)
+    print("Redis FEN cache successfully updated.")
+
+
+@shared_task
+def refresh_redis_cache():
+    all_fens = FENPosition.objects.all()
+    for fen in all_fens:
+        cache_fen_position(fen.fen_string, fen.game_id)
+    return f"Cached {all_fens.count()} FEN positions"
