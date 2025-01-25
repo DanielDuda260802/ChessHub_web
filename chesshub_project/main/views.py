@@ -21,6 +21,7 @@ from io import StringIO
 
 from main.models import Game
 from .tasks import upload_pgn_to_storage
+from .utils import get_games_by_fen
 
 board = chess.Board()
 
@@ -29,7 +30,25 @@ current_node = game
 
 @login_required(login_url='login/')
 def homepage(request):
-    return render(request, 'homepage.html')
+    filters = request.session.get('filters', {
+        'sort_by_date': '-date',
+        'date_from': '',
+        'date_to': '',
+        'white_elo_filter': 'exact',
+        'white_elo': '',
+        'black_elo_filter': 'exact',
+        'black_elo': '',
+        'result': '',
+    })
+
+    # Zamijeni None vrijednosti s praznim stringovima kako bi se izbjegle greške u JS parsiranju
+    filters = {key: value if value is not None else '' for key, value in filters.items()}
+    
+    # Pretvori filtere u JSON string i proslijedi u template sigurno
+    filters_json = json.dumps(filters)
+
+    return render(request, 'homepage.html', {'filters': filters_json})
+
 
 @csrf_exempt
 def add_move(request):
@@ -62,32 +81,15 @@ def add_move(request):
             board.push(move)
             fen = board.fen()
 
-            return JsonResponse({"fen": fen})
+            game_ids = get_games_by_fen(fen)
+            print(f"backend vraća frontendu ažurirani fen: {fen} s ID-evima partija: {game_ids}")
+
+            return JsonResponse({"fen": fen,"game_ids": list(game_ids)})
         except ValueError as e:
             return JsonResponse({"error": "Invalid move: " + str(e)}, status=400)
         except Exception as e:
             return JsonResponse({"error": "An error occurred: " + str(e)}, status=500)
 
-@csrf_exempt
-def validate_move(request):
-    global current_node
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            move_san = data.get("move")
-            board = current_node.board()
-
-            try:
-                move = board.parse_san(move_san)
-                if board.is_legal(move):
-                    return JsonResponse({"valid": True})
-                else:
-                    return JsonResponse({"valid": False})
-            except ValueError:
-                return JsonResponse({"valid": False})
-
-        except Exception as e:
-            return JsonResponse({"valid": False, "error": str(e)}, status=400)
 
 @csrf_exempt
 def prev_move(request):
@@ -96,7 +98,9 @@ def prev_move(request):
         current_node = current_node.parent
         board = current_node.board()
         fen = board.fen()
-        return JsonResponse({"fen": fen, "pgn": str(game)})
+        game_ids = get_games_by_fen(fen)
+        print(f"Vraćanje ispravnog FEN-a za prev_move sa backenda: {fen} s ID-evima partija: {game_ids}")
+        return JsonResponse({"fen": fen, "pgn": str(game), "game_ids": list(game_ids)})
     else:
         return JsonResponse({"error": "No previous move available"}, status=400)
 
@@ -108,7 +112,10 @@ def next_move(request):
             current_node = current_node.variations[0]
             board = current_node.board()
             fen = board.fen()
-            return JsonResponse({"fen": fen, "pgn": str(game)})
+            
+            game_ids = get_games_by_fen(fen)
+            print(f"Vraćanje ispravnog FEN-a za next_move sa backenda: {fen} s ID-evima partija: {game_ids}")
+            return JsonResponse({"fen": fen, "pgn": str(game), "game_ids": list(game_ids)})
         else:
             variations = [str(variation.move) for variation in current_node.variations]
             print("Dostupne varijacije:", variations)
@@ -254,42 +261,38 @@ def refresh_game_cache():
 def filtered_games(request):
     games = Game.objects.all()
 
-    sort_by_date = request.GET.get('sort_by_date', '-date')
-    allowed_sort_fields = ['date', '-date']
-    if sort_by_date not in allowed_sort_fields:
-        sort_by_date = '-date'
+    filters = request.GET.dict()
+    if not filters and 'filters' in request.session:
+        filters = request.session.get('filters')
 
-    white_elo_filter = request.GET.get('white_elo_filter')
-    white_elo_value = request.GET.get('white_elo')
+    filters = {k: v if v is not None else '' for k, v in filters.items()}
 
-    if white_elo_filter and white_elo_value:
-        if white_elo_filter == "exact":
-            games = games.filter(white_elo=white_elo_value)
-        elif white_elo_filter == "gte":
-            games = games.filter(white_elo__gte=white_elo_value)
-        elif white_elo_filter == "lte":
-            games = games.filter(white_elo__lte=white_elo_value)
+    request.session['filters'] = filters
+    request.session.modified = True
 
-    black_elo_filter = request.GET.get('black_elo_filter')
-    black_elo_value = request.GET.get('black_elo')
+    if filters.get('date_from') and filters.get('date_to'):
+        games = games.filter(date__range=[filters['date_from'], filters['date_to']])
 
-    if black_elo_filter and black_elo_value:
-        if black_elo_filter == "exact":
-            games = games.filter(black_elo=black_elo_value)
-        elif black_elo_filter == "gte":
-            games = games.filter(black_elo__gte=black_elo_value)
-        elif black_elo_filter == "lte":
-            games = games.filter(black_elo__lte=black_elo_value)
+    if filters.get('white_elo_filter') and filters.get('white_elo'):
+        if filters['white_elo_filter'] == "exact":
+            games = games.filter(white_elo=filters['white_elo'])
+        elif filters['white_elo_filter'] == "gte":
+            games = games.filter(white_elo__gte=filters['white_elo'])
+        elif filters['white_elo_filter'] == "lte":
+            games = games.filter(white_elo__lte=filters['white_elo'])
 
-    date_from = request.GET.get('date_from')
-    date_to = request.GET.get('date_to')
-    if date_from and date_to:
-        games = games.filter(date__range=[date_from, date_to])
+    if filters.get('black_elo_filter') and filters.get('black_elo'):
+        if filters['black_elo_filter'] == "exact":
+            games = games.filter(black_elo=filters['black_elo'])
+        elif filters['black_elo_filter'] == "gte":
+            games = games.filter(black_elo__gte=filters['black_elo'])
+        elif filters['black_elo_filter'] == "lte":
+            games = games.filter(black_elo__lte=filters['black_elo'])
 
-    result = request.GET.get('result')
-    if result:
-        games = games.filter(result=result)
+    if filters.get('result'):
+        games = games.filter(result=filters['result'])
 
+    sort_by_date = filters.get('sort_by_date', '-date')
     games = games.order_by(sort_by_date)
 
     page_number = request.GET.get('page', 1)
@@ -304,4 +307,9 @@ def filtered_games(request):
         'current_page': page_obj.number
     })
 
+@csrf_exempt
+def clear_filters(request):
+    if 'filters' in request.session:
+        del request.session['filters']
+    return JsonResponse({'status': 'success'})
 

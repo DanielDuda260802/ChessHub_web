@@ -167,7 +167,7 @@ CELERY_TASK_ROUTES = {
 CELERY_BEAT_SCHEDULE = {
     'refresh_redis_cache_task': {
         'task': 'main.tasks.refresh_redis_cache',
-        'schedule': crontab(minute='*/30'),
+        'schedule': crontab(minute='*/5'),
     },
 }
 
@@ -183,3 +183,10 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+
+SESSION_ENGINE = 'django.contrib.sessions.backends.db' 
+
+SESSION_COOKIE_AGE = 86400  
+SESSION_SAVE_EVERY_REQUEST = True 
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False

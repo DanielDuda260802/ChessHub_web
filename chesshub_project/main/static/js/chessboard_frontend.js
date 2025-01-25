@@ -80,7 +80,7 @@ function showPromotionMenu(move, targetSquare) {
         "b": { "q": "bQ", "r": "bR", "b": "bB", "n": "bN" },
     };
     
-    const position = board.position(); // Get current board position
+    const position = board.position(); 
     const piece = position[move.substring(0, 2)];
     const color = piece[0];
 
@@ -497,7 +497,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 document.getElementById('filter-form').addEventListener('submit', function(event) {
     event.preventDefault();
     
-    filters = {};  // Resetiranje filtera
+    filters = {}; 
 
     const formData = new FormData(this);
     formData.forEach((value, key) => {
@@ -608,7 +608,7 @@ document.getElementById('pgn-file').addEventListener('change', async function(ev
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRFToken': getCsrfToken()  // Dodavanje CSRF tokena u zahtjev
+                'X-CSRFToken': getCsrfToken()  
             }
         });
 
@@ -624,3 +624,17 @@ document.getElementById('pgn-file').addEventListener('change', async function(ev
         alert("An error occurred while uploading.");
     }
 });
+
+document.getElementById('reset-filters').addEventListener('click', function() {
+    fetch('/clear_filters/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    }).then(response => {
+        if (response.ok) {
+            location.reload();
+        }
+    });
+});
+
