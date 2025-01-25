@@ -18,6 +18,7 @@
                         <button id="import-pgn" class="btn btn-primary" onclick="document.getElementById('pgn-file').click();">
                             Import PGN
                         </button>
+                        <button id="reset-game" class="btn btn-warning">Reset Game</button>
                     </div>
                 </div>
 
@@ -115,33 +116,60 @@
             <script type="module" src="{% static 'js/chessboard_frontend.js' %}"></script>
             <script>
                 document.addEventListener("DOMContentLoaded", function () {
-                    let filters = JSON.parse('{{ filters|escapejs }}');
-            
+                    let initialFen = "{{ current_fen|default:'start'|escapejs }}";
+                    let pgnMoves = "{{ pgn_moves|default:''|escapejs }}";
+                    let currentIndex = parseInt("{{ current_index|default:'0' }}");
+                    let filters = JSON.parse('{{ filters|escapejs|default:"{}" }}');
+
                     console.log("Loaded filters:", filters);
-            
-                    if (filters.sort_by_date) {
-                        document.getElementById('sort_by_date').value = filters.sort_by_date;
+                    console.log("Board initialized with FEN:", initialFen);
+                    console.log("Current move index:", currentIndex);
+                    console.log("PGN Moves Loaded:", pgnMoves);
+
+                    if (window.board) {
+                        if (initialFen && initialFen !== "start") {
+                            setTimeout(() => {
+                                board.position(initialFen);
+                                console.log("Board set to:", initialFen);
+                            }, 500);
+                        } else {
+                            setTimeout(() => {
+                                board.start();
+                                console.log("Board set to starting position.");
+                            }, 500);
+                        }
+                    } else {
+                        console.error("Board object not found!");
                     }
-                    if (filters.date_from) {
-                        document.getElementById('date_from').value = filters.date_from;
-                    }
-                    if (filters.date_to) {
-                        document.getElementById('date_to').value = filters.date_to;
-                    }
-                    if (filters.white_elo) {
-                        document.getElementById('white_elo').value = filters.white_elo;
-                        document.getElementById('white_elo_filter').value = filters.white_elo_filter;
-                    }
-                    if (filters.black_elo) {
-                        document.getElementById('black_elo').value = filters.black_elo;
-                        document.getElementById('black_elo_filter').value = filters.black_elo_filter;
-                    }
-                    if (filters.result) {
-                        document.getElementById('result').value = filters.result;
-                    }
+
+                    window.currentMoveIndex = currentIndex;
+
+                    setTimeout(function() {
+                        if (filters.sort_by_date) {
+                            document.getElementById('sort_by_date').value = filters.sort_by_date;
+                        }
+                        if (filters.date_from) {
+                            document.getElementById('date_from').value = filters.date_from;
+                        }
+                        if (filters.date_to) {
+                            document.getElementById('date_to').value = filters.date_to;
+                        }
+                        if (filters.white_elo) {
+                            document.getElementById('white_elo').value = filters.white_elo;
+                            document.getElementById('white_elo_filter').value = filters.white_elo_filter;
+                        }
+                        if (filters.black_elo) {
+                            document.getElementById('black_elo').value = filters.black_elo;
+                            document.getElementById('black_elo_filter').value = filters.black_elo_filter;
+                        }
+                        if (filters.result) {
+                            document.getElementById('result').value = filters.result;
+                        }
+                        console.log("Filters applied to the form.");
+                    }, 300);
                 });
             </script>
-                
+            
         {% endblock %}
     {% else %}
         <div class="container vh-100 d-flex justify-content-center align-items-center text-center">

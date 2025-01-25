@@ -10,9 +10,9 @@ document.addEventListener("DOMContentLoaded", function () {
         onDrop: onDrop
     });
 
-    console.log("Chessboard initialized:", board); 
     window.board = board; 
-    window.game = game;  
+    window.game = game;
+    updateButtonStates();  
 
 function onDrop(source, target) {
     const move = `${source}${target}`;
@@ -139,201 +139,150 @@ function sendMoveToBackend(move) {
         });
     }
 
-function updateButtonStates() {
-    fetch("/current_state/", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCsrfToken()
-        }
-    })
-        .then((response) => {
-            if (!response.ok) {
-                throw new Error("Failed to fetch button states.");
+    function updateButtonStates() {
+        fetch("/current_state/", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken()
             }
-            return response.json();
         })
+        .then((response) => response.json())
         .then((data) => {
-            const isAtStart = data.is_at_start; 
-            const hasNextMove = data.has_next_move; 
-
-            document.getElementById("prev-move").disabled = isAtStart;
-            document.getElementById("next-move").disabled = !hasNextMove;
+            console.log("Game state:", data);
+    
+            document.getElementById("prev-move").disabled = data.is_at_start;
+            document.getElementById("next-move").disabled = !data.has_next_move;
+    
+            if (data.fen) {
+                board.position(data.fen);
+            }
         })
         .catch((error) => console.error("Error updating button states:", error));
-}
-
-function navigateBack() {
-    fetch("/prev-move/", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": getCsrfToken()
-        }
-    })
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((data) => {
-                    throw new Error(data.error || "Unknown error");
-                });
-            }
-            return response.json();
+    }
+    
+    document.getElementById("prev-move").addEventListener("click", function () {
+        fetch("/prev-move/", {
+            method: "POST",
+            headers: { "X-CSRFToken": getCsrfToken() }
         })
+        .then((response) => response.json())
         .then((data) => {
             if (data.fen) {
                 board.position(data.fen);
             }
             updateButtonStates();
         })
-        .catch((error) => {
-            console.error("Error navigating back:", error.message);
-        });
-}
-
-document.getElementById("prev-move").addEventListener("click", function () {
-    navigateBack();
-});
-
-document.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowLeft") {
-        navigateBack();
-    }
-});
-
-function navigateNext() {
-    fetch("/next-move/", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": getCsrfToken()
-        }
-    })
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((data) => {
-                    throw new Error(data.error || "Unknown error");
-                });
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.variations) {
-                console.log("Dostupne varijacije:", data.variations);
-                showVariationMenu(data.variations);
-            } else if (data.fen) {
-                board.position(data.fen);
-                updateButtonStates();
-            } else {
-                console.error("Unexpected response:", data);
-            }
-        })
-        .catch((error) => {
-            console.error("Error navigating next:", error.message);
-        });
-}
-
-
-document.getElementById("next-move").addEventListener("click", function () {
-    navigateNext();
-});
-
-document.addEventListener("keydown", function (event) {
-    if (event.key === "ArrowRight") {
-        navigateNext();
-    }
-});
-
-updateButtonStates();
-
-function showVariationMenu(variations) {
-    const menu = document.createElement("div");
-    menu.id = "variation-menu";
-
-    const list = document.createElement("ul");
-    list.className = "variation-menu-list";
-
-    let currentIndex = 0;
-
-    variations.forEach((variation, index) => {
-        const listItem = document.createElement("li");
-        listItem.textContent = variation;
-        listItem.className = "variation-menu-item";
-        if (index === currentIndex) {
-            listItem.classList.add("active");
-        }
-
-        listItem.addEventListener("click", function () {
-            console.log("Odabrana varijacija klikom:", variation);
-            closeMenu(); 
-            selectVariation(index);
-        });
-
-        list.appendChild(listItem);
+        .catch((error) => console.error("Error navigating back:", error));
     });
-
-    menu.appendChild(list);
-    document.body.appendChild(menu);
-
-    function handleKeyNavigation(event) {
-        const listItems = list.querySelectorAll(".variation-menu-item");
-
-        if (event.key === "ArrowDown") {
-            currentIndex = (currentIndex + 1) % variations.length;
-            updateHighlight(listItems);
-        } else if (event.key === "ArrowUp") {
-            currentIndex = (currentIndex - 1 + variations.length) % variations.length;
-            updateHighlight(listItems);
-        } else if (event.key === "Enter") {
-            closeMenu(); 
-            selectVariation(currentIndex);
-        }
-    }
-
-    function updateHighlight(listItems) {
-        listItems.forEach((item, index) => {
-            item.classList.toggle("active", index === currentIndex);
-        });
-    }
-
-    function closeMenu() {
-        document.body.removeChild(menu);
-        document.removeEventListener("keydown", handleKeyNavigation);
-        console.log("Izbornik zatvoren.");
-    }
-
-    document.addEventListener("keydown", handleKeyNavigation);
-
-    menu.focus();
-}
-
-
-function selectVariation(index) {
-    fetch("/choose-variation/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCsrfToken()
-        },
-        body: JSON.stringify({ variation_index: index })
-    })
+    
+    document.getElementById("next-move").addEventListener("click", function () {
+        fetch("/next-move/", {
+            method: "POST",
+            headers: { "X-CSRFToken": getCsrfToken() }
+        })
         .then((response) => response.json())
         .then((data) => {
             if (data.fen) {
-                board.position(data.fen); 
+                board.position(data.fen);
             }
-            if (data.pgn) {
-                updatePGN(data.pgn); 
-            }
+            updateButtonStates();
         })
-        .catch((error) => console.error("Error selecting variation:", error));
-}
+        .catch((error) => console.error("Error navigating next:", error));
+    });
+    
 
-function updatePGN(pgn) {
-    document.getElementById("pgn-output").textContent = pgn;
-    console.log("Updated PGN:", pgn);
-}
+    function showVariationMenu(variations) {
+        const menu = document.createElement("div");
+        menu.id = "variation-menu";
 
-function getCsrfToken() {
-    return document.querySelector("meta[name='csrf-token']").getAttribute("content");
-}
+        const list = document.createElement("ul");
+        list.className = "variation-menu-list";
+
+        let currentIndex = 0;
+
+        variations.forEach((variation, index) => {
+            const listItem = document.createElement("li");
+            listItem.textContent = variation;
+            listItem.className = "variation-menu-item";
+            if (index === currentIndex) {
+                listItem.classList.add("active");
+            }
+
+            listItem.addEventListener("click", function () {
+                console.log("Odabrana varijacija klikom:", variation);
+                closeMenu(); 
+                selectVariation(index);
+            });
+
+            list.appendChild(listItem);
+        });
+
+        menu.appendChild(list);
+        document.body.appendChild(menu);
+
+        function handleKeyNavigation(event) {
+            const listItems = list.querySelectorAll(".variation-menu-item");
+
+            if (event.key === "ArrowDown") {
+                currentIndex = (currentIndex + 1) % variations.length;
+                updateHighlight(listItems);
+            } else if (event.key === "ArrowUp") {
+                currentIndex = (currentIndex - 1 + variations.length) % variations.length;
+                updateHighlight(listItems);
+            } else if (event.key === "Enter") {
+                closeMenu(); 
+                selectVariation(currentIndex);
+            }
+        }
+
+        function updateHighlight(listItems) {
+            listItems.forEach((item, index) => {
+                item.classList.toggle("active", index === currentIndex);
+            });
+        }
+
+        function closeMenu() {
+            document.body.removeChild(menu);
+            document.removeEventListener("keydown", handleKeyNavigation);
+            console.log("Izbornik zatvoren.");
+        }
+
+        document.addEventListener("keydown", handleKeyNavigation);
+
+        menu.focus();
+    }
+
+
+    function selectVariation(index) {
+        fetch("/choose-variation/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken()
+            },
+            body: JSON.stringify({ variation_index: index })
+        })
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.fen) {
+                    board.position(data.fen); 
+                }
+                if (data.pgn) {
+                    updatePGN(data.pgn); 
+                }
+            })
+            .catch((error) => console.error("Error selecting variation:", error));
+    }
+
+    function updatePGN(pgn) {
+        document.getElementById("pgn-output").textContent = pgn;
+        console.log("Updated PGN:", pgn);
+    }
+
+    function getCsrfToken() {
+        return document.querySelector("meta[name='csrf-token']").getAttribute("content");
+    }
 });
 
 /* GAME LIST **/
@@ -638,3 +587,16 @@ document.getElementById('reset-filters').addEventListener('click', function() {
     });
 });
 
+document.getElementById("reset-game").addEventListener("click", function() {
+    fetch("/reset_game/", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken()
+        }
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              location.reload();
+          }
+      });
+});

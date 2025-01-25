@@ -30,6 +30,10 @@ current_node = game
 
 @login_required(login_url='login/')
 def homepage(request):
+    current_fen = request.session.get('current_fen', chess.STARTING_FEN)
+    pgn_moves = request.session.get('pgn_moves', '')
+    current_index = request.session.get('current_index', 0)
+
     filters = request.session.get('filters', {
         'sort_by_date': '-date',
         'date_from': '',
@@ -41,100 +45,155 @@ def homepage(request):
         'result': '',
     })
 
-    # Zamijeni None vrijednosti s praznim stringovima kako bi se izbjegle greške u JS parsiranju
     filters = {key: value if value is not None else '' for key, value in filters.items()}
     
-    # Pretvori filtere u JSON string i proslijedi u template sigurno
-    filters_json = json.dumps(filters)
-
-    return render(request, 'homepage.html', {'filters': filters_json})
-
+    return render(request, 'homepage.html', {
+        'filters': json.dumps(filters),
+        'current_fen': current_fen,
+        'pgn_moves': pgn_moves,
+        'current_index': current_index
+    })
 
 @csrf_exempt
 def add_move(request):
-    global current_node
     if request.method == "POST":
+        data = json.loads(request.body)
+        move_san = data.get("move")
+        
         try:
-            data = json.loads(request.body)
-            move_san = data.get("move")
+            game = get_game_from_session(request)
+            current_index = request.session.get('current_index', 0)
+
+            # Navigacija do trenutnog čvora igre
+            current_node = game
+            for _ in range(current_index):
+                if current_node.variations:
+                    current_node = current_node.variations[0]
+
             board = current_node.board()
 
+            # Parsiranje poteza
             try:
                 move = board.parse_san(move_san)
             except ValueError:
                 return JsonResponse({"error": "Invalid move format"}, status=400)
 
+            # Provjera je li potez legalan
             if move not in board.legal_moves:
                 return JsonResponse({"error": "Illegal move"}, status=400)
 
-            matching_variation = None
-            for variation in current_node.variations:
-                if variation.move == move:
-                    matching_variation = variation
-                    break
-
-            if matching_variation:
-                current_node = matching_variation
-            else:
-                current_node = current_node.add_variation(move)
-
+            # Dodaj potez ako je legalan
+            current_node = current_node.add_variation(move)
             board.push(move)
             fen = board.fen()
 
-            game_ids = get_games_by_fen(fen)
-            print(f"backend vraća frontendu ažurirani fen: {fen} s ID-evima partija: {game_ids}")
+            # Ažuriraj sesiju SAMO ako je potez bio ispravan
+            request.session['current_index'] = current_index + 1
+            request.session['current_fen'] = fen
+            request.session['pgn_moves'] = str(game)
+            request.session.modified = True
 
-            return JsonResponse({"fen": fen,"game_ids": list(game_ids)})
-        except ValueError as e:
-            return JsonResponse({"error": "Invalid move: " + str(e)}, status=400)
+            return JsonResponse({"fen": fen, "game_ids": []})
+
         except Exception as e:
-            return JsonResponse({"error": "An error occurred: " + str(e)}, status=500)
-
+            return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
 def prev_move(request):
-    global current_node
-    if current_node.parent:
-        current_node = current_node.parent
+    game = get_game_from_session(request)
+    current_index = request.session.get('current_index', 0)
+
+    if current_index > 0:
+        current_index -= 1
+        current_node = game
+        for _ in range(current_index):
+            current_node = current_node.variations[0]
+
         board = current_node.board()
         fen = board.fen()
-        game_ids = get_games_by_fen(fen)
-        print(f"Vraćanje ispravnog FEN-a za prev_move sa backenda: {fen} s ID-evima partija: {game_ids}")
-        return JsonResponse({"fen": fen, "pgn": str(game), "game_ids": list(game_ids)})
+
+        request.session['current_index'] = current_index
+        request.session['current_fen'] = fen
+        request.session['pgn_moves'] = str(game)
+        request.session.modified = True
+
+        return JsonResponse({"fen": fen, "pgn": str(game)})
     else:
         return JsonResponse({"error": "No previous move available"}, status=400)
 
+
+def get_game_from_session(request):
+    pgn_moves = request.session.get('pgn_moves', '')
+    game = chess.pgn.Game()
+    if pgn_moves:
+        pgn_stream = io.StringIO(pgn_moves)
+        game = chess.pgn.read_game(pgn_stream)
+    return game
+
 @csrf_exempt
 def next_move(request):
-    global current_node
+    game = get_game_from_session(request)
+    current_index = request.session.get('current_index', 0)
+
+    current_node = game
+    for _ in range(current_index):
+        current_node = current_node.variations[0]
+
     if current_node.variations:
-        if len(current_node.variations) == 1:
-            current_node = current_node.variations[0]
-            board = current_node.board()
-            fen = board.fen()
-            
-            game_ids = get_games_by_fen(fen)
-            print(f"Vraćanje ispravnog FEN-a za next_move sa backenda: {fen} s ID-evima partija: {game_ids}")
-            return JsonResponse({"fen": fen, "pgn": str(game), "game_ids": list(game_ids)})
-        else:
-            variations = [str(variation.move) for variation in current_node.variations]
-            print("Dostupne varijacije:", variations)
-            return JsonResponse({"variations": variations})
+        move = current_node.variations[0].move
+        board = current_node.board()
+        board.push(move)
+
+        current_node = current_node.variations[0]
+        current_index += 1
+
+        fen = board.fen()
+
+        # Ažuriranje sesije
+        request.session['current_index'] = current_index
+        request.session['current_fen'] = fen
+        request.session['pgn_moves'] = str(game)
+        request.session.modified = True
+
+        return JsonResponse({"fen": fen, "pgn": str(game)})
     else:
         return JsonResponse({"error": "No next move available"}, status=400)
 
 @csrf_exempt
 def current_state(request):
-    global current_node
-    board = current_node.board()
+    fen = request.session.get('current_fen', chess.STARTING_FEN)
+    pgn_moves = request.session.get('pgn_moves', '')
+    current_index = request.session.get('current_index', 0)
 
-    is_at_start = current_node.parent is None
-    has_next_move = len(current_node.variations) > 0
+    game = get_game_from_session(request)
+
+    # Navigacija do trenutnog čvora prema spremljenom indeksu
+    current_node = game
+    for _ in range(current_index):
+        if current_node.variations:
+            current_node = current_node.variations[0]
+
+    # Provjera da li je korisnik na početku partije
+    is_at_start = (current_index == 0)
+
+    # Provjera da li postoje budući potezi
+    has_next_move = bool(current_node.variations)
 
     return JsonResponse({
         "is_at_start": is_at_start,
-        "has_next_move": has_next_move
+        "has_next_move": has_next_move,
+        "fen": fen
     })
+
+
+@csrf_exempt
+def reset_game(request):
+    request.session['current_index'] = 0
+    request.session['current_fen'] = chess.STARTING_FEN
+    request.session['pgn_moves'] = ''
+    request.session.modified = True
+
+    return JsonResponse({"success": True, "message": "Game reset successfully."})
 
 
 @csrf_exempt
