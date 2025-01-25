@@ -171,7 +171,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .catch((error) => console.error("Error updating button states:", error));
     }
     
-    document.getElementById("prev-move").addEventListener("click", function () {
+    function navigateBack() {
         fetch("/prev-move/", {
             method: "POST",
             headers: { "X-CSRFToken": getCsrfToken() }
@@ -184,24 +184,43 @@ document.addEventListener("DOMContentLoaded", function () {
             updateButtonStates();
         })
         .catch((error) => console.error("Error navigating back:", error));
-    });
+    }
     
-    document.getElementById("next-move").addEventListener("click", function () {
+    function navigateNext() {
         fetch("/next-move/", {
             method: "POST",
-            headers: { "X-CSRFToken": getCsrfToken() }
+            headers: {
+                "X-CSRFToken": getCsrfToken()
+            }
         })
         .then((response) => response.json())
         .then((data) => {
-            if (data.fen) {
+            if (data.variations) {
+                console.log("Available variations:", data.variations);
+                showVariationMenu(data.variations);
+            } else if (data.fen) {
                 board.position(data.fen);
+                updateButtonStates();
+            } else {
+                console.error("Unexpected response:", data);
             }
-            updateButtonStates();
         })
-        .catch((error) => console.error("Error navigating next:", error));
+        .catch((error) => {
+            console.error("Error navigating next:", error.message);
+        });
+    }
+
+    document.getElementById("prev-move").addEventListener("click", navigateBack);
+    document.getElementById("next-move").addEventListener("click", navigateNext);
+
+    document.addEventListener("keydown", function (event) {
+        if (event.key === "ArrowLeft") {
+            navigateBack();
+        } else if (event.key === "ArrowRight") {
+            navigateNext();
+        }
     });
     
-
     function showVariationMenu(variations) {
         const menu = document.createElement("div");
         menu.id = "variation-menu";
@@ -276,18 +295,16 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((response) => response.json())
             .then((data) => {
                 if (data.fen) {
-                    board.position(data.fen); 
+                    board.position(data.fen);
+                    updateButtonStates(); 
                 }
                 if (data.pgn) {
-                    updatePGN(data.pgn); 
+                    let cleanedPGN = data.pgn.replace(/\[.*?\]\s?/g, '').trim();
+                    document.getElementById("pgn-output").textContent = cleanedPGN;
+                    console.log("Updated PGN after move:", cleanedPGN);
                 }
             })
             .catch((error) => console.error("Error selecting variation:", error));
-    }
-
-    function updatePGN(pgn) {
-        document.getElementById("pgn-output").textContent = pgn;
-        console.log("Updated PGN:", pgn);
     }
 
     function getCsrfToken() {

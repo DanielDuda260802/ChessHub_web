@@ -60,7 +60,7 @@ def add_move(request):
     if request.method == "POST":
         data = json.loads(request.body)
         move_san = data.get("move")
-        
+
         try:
             game = get_game_from_session(request)
             current_index = request.session.get('current_index', 0)
@@ -80,7 +80,26 @@ def add_move(request):
             if move not in board.legal_moves:
                 return JsonResponse({"error": "Illegal move"}, status=400)
 
-            current_node = current_node.add_variation(move)
+            existing_move = None
+            for variation in current_node.variations:
+                if variation.move == move:
+                    existing_move = variation
+                    break
+
+            if existing_move:
+                current_node = existing_move
+            else:
+                new_variation = current_node.add_variation(move)
+
+                if len(current_node.variations) > 1:
+                    try:
+                        move_to_promote = new_variation.move
+                        current_node.promote(move_to_promote)
+                    except Exception as e:
+                        return JsonResponse({"error": f"Promotion failed: {str(e)}"}, status=500)
+
+                current_node = new_variation
+
             board.push(move)
             fen = board.fen()
 
@@ -121,7 +140,6 @@ def prev_move(request):
     else:
         return JsonResponse({"error": "No previous move available"}, status=400)
 
-
 def get_game_from_session(request):
     pgn_moves = request.session.get('pgn_moves', '')
     game = chess.pgn.Game()
@@ -137,26 +155,69 @@ def next_move(request):
 
     current_node = game
     for _ in range(current_index):
-        current_node = current_node.variations[0]
+        if current_node.variations:
+            current_node = current_node.variations[0]
 
     if current_node.variations:
-        move = current_node.variations[0].move
-        board = current_node.board()
-        board.push(move)
+        if len(current_node.variations) == 1:
+            move = current_node.variations[0].move
+            board = current_node.board()
+            board.push(move)
+            current_node = current_node.variations[0]
+            current_index += 1
 
-        current_node = current_node.variations[0]
-        current_index += 1
+            fen = board.fen()
 
-        fen = board.fen()
+            request.session['current_index'] = current_index
+            request.session['current_fen'] = fen
+            request.session['pgn_moves'] = str(game)
+            request.session.modified = True
 
-        request.session['current_index'] = current_index
-        request.session['current_fen'] = fen
-        request.session['pgn_moves'] = str(game)
-        request.session.modified = True
-
-        return JsonResponse({"fen": fen, "pgn": str(game)})
+            return JsonResponse({"fen": fen, "pgn": extract_pgn_moves(str(game))})
+        else:
+            variations = [str(variation.move) for variation in current_node.variations]
+            return JsonResponse({"variations": variations})
     else:
         return JsonResponse({"error": "No next move available"}, status=400)
+
+@csrf_exempt
+def choose_variation(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            variation_index = int(data.get("variation_index", 0))
+
+            game = get_game_from_session(request)
+            current_index = request.session.get('current_index', 0)
+
+            current_node = game
+            for _ in range(current_index):
+                if current_node.variations:
+                    current_node = current_node.variations[0]
+
+            if 0 <= variation_index < len(current_node.variations):
+                chosen_variation = current_node.variations[variation_index]
+
+                move_san = chosen_variation.san()
+                board = current_node.board()
+                move_uci = board.parse_san(move_san)
+
+                current_node.promote(move_uci)
+
+                request.session['pgn_moves'] = str(game)
+                request.session['current_fen'] = chosen_variation.board().fen()
+                request.session['current_index'] += 1
+                request.session.modified = True
+
+                return JsonResponse({
+                    "fen": chosen_variation.board().fen(),
+                    "pgn": extract_pgn_moves(str(game))
+                })
+            else:
+                return JsonResponse({"error": "Invalid variation index"}, status=400)
+
+        except Exception as e:
+            return JsonResponse({"error": str(e)}, status=400)
 
 @csrf_exempt
 def current_state(request):
@@ -189,29 +250,6 @@ def reset_game(request):
     request.session.modified = True
 
     return JsonResponse({"success": True, "message": "Game reset successfully."})
-
-
-@csrf_exempt
-def choose_variation(request):
-    global current_node
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            variation_index = int(data.get("variation_index", 0))
-            print("Odabrana varijacija:", variation_index)
-
-            if variation_index < len(current_node.variations):
-                current_node = current_node.variations[variation_index]
-                board = current_node.board()
-                fen = board.fen()
-                print("Varijacija odabrana i odigrana:", current_node.move)
-                return JsonResponse({"fen": fen, "pgn": str(game)})
-            else:
-                print("Neispravan indeks varijacije:", variation_index)
-                return JsonResponse({"error": "Invalid variation index"}, status=400)
-        except Exception as e:
-            print("Greška pri odabiru varijacije:", str(e))
-            return JsonResponse({"error": str(e)}, status=400)
             
 def get_games(request):
     page = int(request.GET.get('page', 1))
@@ -371,6 +409,6 @@ def extract_pgn_moves(pgn_string):
     moves = []
     lines = pgn_string.split("\n")
     for line in lines:
-        if not line.startswith("["): 
+        if not line.startswith("["):
             moves.append(line.strip())
     return " ".join(moves).strip()
