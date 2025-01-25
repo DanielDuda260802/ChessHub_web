@@ -46,11 +46,12 @@ def homepage(request):
     })
 
     filters = {key: value if value is not None else '' for key, value in filters.items()}
+    cleaned_pgn_moves = extract_pgn_moves(pgn_moves) if pgn_moves else ''
     
     return render(request, 'homepage.html', {
         'filters': json.dumps(filters),
         'current_fen': current_fen,
-        'pgn_moves': pgn_moves,
+        'pgn_moves': cleaned_pgn_moves,
         'current_index': current_index
     })
 
@@ -64,7 +65,6 @@ def add_move(request):
             game = get_game_from_session(request)
             current_index = request.session.get('current_index', 0)
 
-            # Navigacija do trenutnog čvora igre
             current_node = game
             for _ in range(current_index):
                 if current_node.variations:
@@ -72,28 +72,28 @@ def add_move(request):
 
             board = current_node.board()
 
-            # Parsiranje poteza
             try:
                 move = board.parse_san(move_san)
             except ValueError:
                 return JsonResponse({"error": "Invalid move format"}, status=400)
 
-            # Provjera je li potez legalan
             if move not in board.legal_moves:
                 return JsonResponse({"error": "Illegal move"}, status=400)
 
-            # Dodaj potez ako je legalan
             current_node = current_node.add_variation(move)
             board.push(move)
             fen = board.fen()
 
-            # Ažuriraj sesiju SAMO ako je potez bio ispravan
             request.session['current_index'] = current_index + 1
             request.session['current_fen'] = fen
             request.session['pgn_moves'] = str(game)
             request.session.modified = True
 
-            return JsonResponse({"fen": fen, "game_ids": []})
+            return JsonResponse({
+                "fen": fen,
+                "pgn": extract_pgn_moves(str(game)),
+                "game_ids": []
+            })
 
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
@@ -149,7 +149,6 @@ def next_move(request):
 
         fen = board.fen()
 
-        # Ažuriranje sesije
         request.session['current_index'] = current_index
         request.session['current_fen'] = fen
         request.session['pgn_moves'] = str(game)
@@ -167,16 +166,12 @@ def current_state(request):
 
     game = get_game_from_session(request)
 
-    # Navigacija do trenutnog čvora prema spremljenom indeksu
     current_node = game
     for _ in range(current_index):
         if current_node.variations:
             current_node = current_node.variations[0]
 
-    # Provjera da li je korisnik na početku partije
     is_at_start = (current_index == 0)
-
-    # Provjera da li postoje budući potezi
     has_next_move = bool(current_node.variations)
 
     return JsonResponse({
@@ -372,3 +367,10 @@ def clear_filters(request):
         del request.session['filters']
     return JsonResponse({'status': 'success'})
 
+def extract_pgn_moves(pgn_string):
+    moves = []
+    lines = pgn_string.split("\n")
+    for line in lines:
+        if not line.startswith("["): 
+            moves.append(line.strip())
+    return " ".join(moves).strip()

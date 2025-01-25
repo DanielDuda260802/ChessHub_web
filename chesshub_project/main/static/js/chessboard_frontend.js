@@ -14,130 +14,136 @@ document.addEventListener("DOMContentLoaded", function () {
     window.game = game;
     updateButtonStates();  
 
-function onDrop(source, target) {
-    const move = `${source}${target}`;
-    const piece = board.position()[source]; 
+    function onDrop(source, target) {
+        const move = `${source}${target}`;
+        const piece = board.position()[source]; 
 
-    const isPawnPromotion =
-        (piece === "wP" && target[1] === "8") || 
-        (piece === "bP" && target[1] === "1");  
+        const isPawnPromotion =
+            (piece === "wP" && target[1] === "8") || 
+            (piece === "bP" && target[1] === "1");  
 
-        if (isPawnPromotion) {
-            showPromotionMenu(move, target); 
-            return "snapback"; 
-        } else {
-            sendMoveToBackend(move); 
+            if (isPawnPromotion) {
+                showPromotionMenu(move, target); 
+                return "snapback"; 
+            } else {
+                sendMoveToBackend(move); 
+            }
         }
-    }
 
-function showPromotionMenu(move, targetSquare) {
-    const menu = document.createElement("div");
-    menu.id = "promotion-menu";
-    menu.style.position = "absolute";
-    menu.style.backgroundColor = "white";
-    menu.style.border = "1px solid black";
-    menu.style.padding = "10px";
-    menu.style.zIndex = "1000";
-    menu.style.display = "flex";
-    menu.style.flexDirection = "row";
-    menu.style.justifyContent = "center";
-    menu.style.alignItems = "center";
-    
-    const boardElement = document.getElementById("board");
-    const boardRect = boardElement.getBoundingClientRect();
-    const squareSize = boardRect.width / 8;
+    function showPromotionMenu(move, targetSquare) {
+        const menu = document.createElement("div");
+        menu.id = "promotion-menu";
+        menu.style.position = "absolute";
+        menu.style.backgroundColor = "white";
+        menu.style.border = "1px solid black";
+        menu.style.padding = "10px";
+        menu.style.zIndex = "1000";
+        menu.style.display = "flex";
+        menu.style.flexDirection = "row";
+        menu.style.justifyContent = "center";
+        menu.style.alignItems = "center";
+        
+        const boardElement = document.getElementById("board");
+        const boardRect = boardElement.getBoundingClientRect();
+        const squareSize = boardRect.width / 8;
 
-    console.log("Board Rect:", boardRect);
-    console.log("Square Size:", squareSize);
+        console.log("Board Rect:", boardRect);
+        console.log("Square Size:", squareSize);
 
-    const col = targetSquare.charCodeAt(0) - 97;
-    const row = 8 - parseInt(targetSquare[1]);
+        const col = targetSquare.charCodeAt(0) - 97;
+        const row = 8 - parseInt(targetSquare[1]);
 
-    console.log("Column:", col, "Row:", row);
+        console.log("Column:", col, "Row:", row);
 
-    const squareCenterX = boardRect.left + col * squareSize + squareSize / 2;
-    const squareCenterY = boardRect.top + row * squareSize + squareSize / 2;
+        const squareCenterX = boardRect.left + col * squareSize + squareSize / 2;
+        const squareCenterY = boardRect.top + row * squareSize + squareSize / 2;
 
-    console.log("Square Center X:", squareCenterX, "Square Center Y:", squareCenterY);
+        console.log("Square Center X:", squareCenterX, "Square Center Y:", squareCenterY);
 
-    document.body.appendChild(menu);
-    const menuWidth = menu.offsetWidth;
-    const menuHeight = menu.offsetHeight;
+        document.body.appendChild(menu);
+        const menuWidth = menu.offsetWidth;
+        const menuHeight = menu.offsetHeight;
 
-    console.log("Menu Width:", menuWidth, "Menu Height:", menuHeight);
+        console.log("Menu Width:", menuWidth, "Menu Height:", menuHeight);
 
-    const left = squareCenterX - menuWidth / 2;
-    const top = squareCenterY - menuHeight / 2;
+        const left = squareCenterX - menuWidth / 2;
+        const top = squareCenterY - menuHeight / 2;
 
-    console.log("Calculated Left:", left, "Calculated Top:", top);
+        console.log("Calculated Left:", left, "Calculated Top:", top);
 
-    menu.style.left = `${left}px`;
-    menu.style.top = `${top}px`;
-    
-    const pieces = ["q", "r", "b", "n"];
-    const pieceImages = {
-        "w": { "q": "wQ", "r": "wR", "b": "wB", "n": "wN" },
-        "b": { "q": "bQ", "r": "bR", "b": "bB", "n": "bN" },
-    };
-    
-    const position = board.position(); 
-    const piece = position[move.substring(0, 2)];
-    const color = piece[0];
+        menu.style.left = `${left}px`;
+        menu.style.top = `${top}px`;
+        
+        const pieces = ["q", "r", "b", "n"];
+        const pieceImages = {
+            "w": { "q": "wQ", "r": "wR", "b": "wB", "n": "wN" },
+            "b": { "q": "bQ", "r": "bR", "b": "bB", "n": "bN" },
+        };
+        
+        const position = board.position(); 
+        const piece = position[move.substring(0, 2)];
+        const color = piece[0];
 
-    pieces.forEach((pieceType) => {
-        const button = document.createElement("button");
-        button.style.border = "none";
-        button.style.background = "none";
-        button.style.cursor = "pointer";
-        button.style.margin = "5px";
-    
-        const img = document.createElement("img");
-        img.src = `/static/chessboardjs-1.0.0/img/chesspieces/wikipedia/${pieceImages[color][pieceType]}.png`;
-        img.alt = pieceType.toUpperCase();
-        img.style.width = "40px";
-        img.style.height = "40px";
-    
-        button.appendChild(img);
-        button.addEventListener("click", function () {
-            document.body.removeChild(menu);
-            const promotionMove = move + pieceType.toUpperCase();
-            sendMoveToBackend(promotionMove);
+        pieces.forEach((pieceType) => {
+            const button = document.createElement("button");
+            button.style.border = "none";
+            button.style.background = "none";
+            button.style.cursor = "pointer";
+            button.style.margin = "5px";
+        
+            const img = document.createElement("img");
+            img.src = `/static/chessboardjs-1.0.0/img/chesspieces/wikipedia/${pieceImages[color][pieceType]}.png`;
+            img.alt = pieceType.toUpperCase();
+            img.style.width = "40px";
+            img.style.height = "40px";
+        
+            button.appendChild(img);
+            button.addEventListener("click", function () {
+                document.body.removeChild(menu);
+                const promotionMove = move + pieceType.toUpperCase();
+                sendMoveToBackend(promotionMove);
+            });
+            menu.appendChild(button);
         });
-        menu.appendChild(button);
-    });
-    document.body.appendChild(menu);
-}
-    
-function sendMoveToBackend(move) {
-    const previousFen = board.fen();
-
-    fetch("/add-move/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "X-CSRFToken": getCsrfToken()
-        },
-        body: JSON.stringify({ move: move })
-    })
-        .then((response) => {
-            if (!response.ok) {
-                return response.json().then((data) => {
-                    throw new Error(data.error || "Unknown error");
-                });
-            }
-            return response.json();
-        })
-        .then((data) => {
-            if (data.fen) {
-                board.position(data.fen);
-                updateButtonStates();
-            }
-        })
-        .catch((error) => {
-            console.error("Error adding move:", error.message);
-            board.position(previousFen);
-        });
+        document.body.appendChild(menu);
     }
+        
+    function sendMoveToBackend(move) {
+        const previousFen = board.fen();
+
+        fetch("/add-move/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": getCsrfToken()
+            },
+            body: JSON.stringify({ move: move })
+        })
+            .then((response) => {
+                if (!response.ok) {
+                    return response.json().then((data) => {
+                        throw new Error(data.error || "Unknown error");
+                    });
+                }
+                return response.json();
+            })
+            .then((data) => {
+                if (data.fen) {
+                    board.position(data.fen);
+                    updateButtonStates();
+
+                    if (data.pgn) {
+                        let cleanedPGN = data.pgn.replace(/\[.*?\]\s?/g, '').trim();
+                        document.getElementById("pgn-output").textContent = cleanedPGN;
+                        console.log("Updated PGN after move:", cleanedPGN);
+                    }
+                }
+            })
+            .catch((error) => {
+                console.error("Error adding move:", error.message);
+                board.position(previousFen);
+            });
+        }
 
     function updateButtonStates() {
         fetch("/current_state/", {
@@ -156,6 +162,10 @@ function sendMoveToBackend(move) {
     
             if (data.fen) {
                 board.position(data.fen);
+            }
+            if (data.pgn) {
+                let cleanedPGN = data.pgn.replace(/\[.*?\]\s?/g, '').trim();  
+                document.getElementById("pgn-output").textContent = cleanedPGN;
             }
         })
         .catch((error) => console.error("Error updating button states:", error));

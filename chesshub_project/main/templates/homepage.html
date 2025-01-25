@@ -20,6 +20,9 @@
                         </button>
                         <button id="reset-game" class="btn btn-warning">Reset Game</button>
                     </div>
+                    <div id="pgn-display" class="mt-3 p-2" style="max-width: 100%; overflow-x: auto;">
+                        <p id="pgn-output" class="mb-0 text-wrap"></p>
+                    </div>
                 </div>
 
                 <!-- Center Column -->
@@ -140,6 +143,14 @@
                         }
                     } else {
                         console.error("Board object not found!");
+                    }
+
+                    let pgnElement = document.getElementById("pgn-output");
+                    if (pgnElement) {
+                        pgnElement.textContent = pgnMoves;
+                        console.log("PGN set in the element:", pgnMoves);
+                    } else {
+                        console.error("Element #pgn-output not found");
                     }
 
                     window.currentMoveIndex = currentIndex;
