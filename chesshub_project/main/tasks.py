@@ -239,11 +239,12 @@ def process_pgn_chunk(games):
                 for fen_pos in new_fen_positions:
                     if fen_pos.game == new_games[idx]:
                         fen_pos.game = game_instance
-                        cache_fen_position(fen_pos.fen_string, game_instance.id)
 
             FENPosition.objects.bulk_create(new_fen_positions, batch_size=500)
 
         logger.info(f"Stored {games_added} games and {len(new_fen_positions)} FEN positions in database.")
+
+        sync_fen_to_redis.delay()
 
     update_cache_with_games(processed_games)
     broadcast_games(processed_games)
@@ -266,8 +267,13 @@ def sync_fen_to_redis():
 
 
 @shared_task
-def refresh_redis_cache():
-    all_fens = FENPosition.objects.all()
-    for fen in all_fens:
-        cache_fen_position(fen.fen_string, fen.game_id)
-    return f"Cached {all_fens.count()} FEN positions"
+def refresh_fen_cache():
+    fen_positions = FENPosition.objects.all()
+    for position in fen_positions:
+        redis_key = f"fen:{position.fen_string}"
+        existing_games = cache.get(redis_key, [])
+        
+        if position.game_id not in existing_games:
+            existing_games.append(position.game_id)
+            cache.set(redis_key, existing_games, timeout=86400)
+    return "Redis FEN cache updated."
