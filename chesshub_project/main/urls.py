@@ -1,13 +1,12 @@
 from django.urls import path
 from . import views
-from .views import game_details, get_game_moves, upload_pgn, get_games, filtered_games
+from .views import game_details, get_game_moves, upload_pgn, get_games, filtered_games, reset_game, get_games_by_fen, clear_filters
 
 app_name = 'main'  
 
 urlpatterns = [
     path('', views.homepage, name='homepage'),
     path("add-move/", views.add_move, name="add_move"),
-    path("validate_move/", views.validate_move, name="validate_move"),
     path("prev-move/", views.prev_move, name="prev_move"),
     path("next-move/", views.next_move, name="next_move"),
     path("current_state/", views.current_state, name="current_state"),
@@ -19,4 +18,7 @@ urlpatterns = [
     path('task-status/<str:task_id>/', views.check_task_status, name='task_status'),
     path('api/games/', get_games, name='get_games'),
     path('filtered_games/', filtered_games, name='filtered_games'),
+    path('reset_game/', views.reset_game, name='reset_game'),
+    path('get_games_by_fen/', views.get_games_by_fen, name='get_games_by_fen'),
+    path('clear_filters/', views.clear_filters, name='clear_filters'),
 ]
