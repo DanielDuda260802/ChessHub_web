@@ -124,11 +124,19 @@
                     let currentIndex = parseInt("{{ current_index|default:'0' }}");
                     let filters = JSON.parse('{{ filters|escapejs|default:"{}" }}');
 
-                    console.log("Loaded filters:", filters);
-                    console.log("Board initialized with FEN:", initialFen);
-                    console.log("Current move index:", currentIndex);
-                    console.log("PGN Moves Loaded:", pgnMoves);
+                    console.log("Initial FEN on page load:", initialFen);
 
+                    if (!window.gamesFetched) {  
+                        window.gamesFetched = true;
+                        
+                        if (initialFen && initialFen !== "start") {
+                            window.currentFen = initialFen;  
+                            fetchGamesByFEN(initialFen, 1);
+                        } else {
+                            fetchGames(1);
+                        }
+                    }
+                    
                     if (window.board) {
                         if (initialFen && initialFen !== "start") {
                             setTimeout(() => {
