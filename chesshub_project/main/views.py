@@ -19,7 +19,7 @@ import json
 from chess.pgn import read_game
 from io import StringIO
 
-from main.models import Game
+from main.models import Game, FENPosition
 from .tasks import upload_pgn_to_storage
 from .utils import get_games_by_fen
 
@@ -412,3 +412,97 @@ def extract_pgn_moves(pgn_string):
         if not line.startswith("["):
             moves.append(line.strip())
     return " ".join(moves).strip()
+
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+def get_games_by_fen(request):
+    fen = request.GET.get('fen', None)
+    page = request.GET.get('page', 1)
+
+    try:
+        page = int(page)
+    except ValueError:
+        return JsonResponse({"error": "Invalid page number"}, status=400)
+
+    if not fen:
+        return JsonResponse({"error": "FEN position is required"}, status=400)
+
+    filters = {
+        'date_from': request.GET.get('date_from'),
+        'date_to': request.GET.get('date_to'),
+        'white_elo_filter': request.GET.get('white_elo_filter'),
+        'white_elo': request.GET.get('white_elo'),
+        'black_elo_filter': request.GET.get('black_elo_filter'),
+        'black_elo': request.GET.get('black_elo'),
+        'result': request.GET.get('result'),
+        'sort_by_date': request.GET.get('sort_by_date', '-date'),
+    }
+
+    if not filters and 'filters' in request.session:
+        filters = request.session.get('filters')
+
+    filters = {k: v if v is not None else '' for k, v in filters.items()}
+
+    request.session['filters'] = filters
+    request.session.modified = True
+
+    redis_key = generate_cache_key(fen, page, filters)
+    cached_data = cache.get(redis_key)
+
+    if not cached_data:
+        game_ids = list(FENPosition.objects.filter(fen_string=fen).values_list('game_id', flat=True))
+
+        if not game_ids:
+            return JsonResponse({"games": [], "total_pages": 0, "current_page": page})
+
+        games_query = Game.objects.filter(id__in=game_ids)
+
+        if filters.get('date_from') and filters.get('date_to'):
+            games_query = games_query.filter(date__range=[filters['date_from'], filters['date_to']])
+
+        if filters.get('white_elo_filter') and filters.get('white_elo'):
+            if filters['white_elo_filter'] == "exact":
+                games_query = games_query.filter(white_elo=filters['white_elo'])
+            elif filters['white_elo_filter'] == "gte":
+                games_query = games_query.filter(white_elo__gte=filters['white_elo'])
+            elif filters['white_elo_filter'] == "lte":
+                games_query = games_query.filter(white_elo__lte=filters['white_elo'])
+
+        if filters.get('black_elo_filter') and filters.get('black_elo'):
+            if filters['black_elo_filter'] == "exact":
+                games_query = games_query.filter(black_elo=filters['black_elo'])
+            elif filters['black_elo_filter'] == "gte":
+                games_query = games_query.filter(black_elo__gte=filters['black_elo'])
+            elif filters['black_elo_filter'] == "lte":
+                games_query = games_query.filter(black_elo__lte=filters['black_elo'])
+
+        if filters.get('result'):
+            games_query = games_query.filter(result__iexact=filters['result'])
+
+        sort_by_date = filters.get('sort_by_date', '-date')
+        games_query = games_query.order_by(sort_by_date)
+
+        paginator = Paginator(games_query, 100)
+        page_obj = paginator.get_page(page)
+
+        games_list = list(page_obj.object_list.values(
+            'id', 'white_player', 'white_elo', 'black_player', 'black_elo', 'result', 'date', 'site'
+        ))
+
+        response_data = {
+            'games': games_list,
+            'total_pages': paginator.num_pages,
+            'current_page': page
+        }
+
+        cache.set(redis_key, response_data, timeout=86400)
+        return JsonResponse(response_data)
+
+    return JsonResponse(cached_data)
+
+def generate_cache_key(fen, page, filters):
+    filter_str = '_'.join(f'{key}:{value}' for key, value in filters.items() if value)
+    return f"fen:{fen}:page:{page}:{filter_str}"
