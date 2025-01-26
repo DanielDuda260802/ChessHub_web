@@ -102,7 +102,9 @@ WSGI_APPLICATION = 'chesshub_project.wsgi.application'
 
 DATABASES = {
     'default': dj_database_url.config(
-        default=config('DATABASE_URL')
+        default=config('DATABASE_URL'),
+        conn_max_age=600,  
+        ssl_require=True
     )
 }
 
@@ -183,6 +185,16 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+        'LOCATION': 'redis://redis:6379/0',
+        'OPTIONS': {
+        }
+    }
+}
+
 
 
 SESSION_ENGINE = 'django.contrib.sessions.backends.db' 

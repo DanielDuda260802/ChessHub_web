@@ -40,7 +40,6 @@ class Game(models.Model):
         ]
         ordering = ['-date']
 
-
 class FENPosition(models.Model):
     fen_string = models.CharField(max_length=100, db_index=True)
     game = models.ForeignKey(Game, on_delete=models.CASCADE)
@@ -54,7 +53,7 @@ class FENPosition(models.Model):
         ]
 
     def __str__(self):
-        return f"FEN: {self.fen_string} - Game: {self.game_id} - Move: {self.move_number}"
+        return f"FEN: {self.fen_string} - Move: {self.move_number}"
 
 
 class PGNFile(models.Model):

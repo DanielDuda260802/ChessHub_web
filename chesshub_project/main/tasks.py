@@ -151,7 +151,7 @@ def process_pgn_queue(pgn_file_path):
 
     except Exception as e:
         logger.error(f"Error processing PGN file: {str(e)}")
-
+        
 @shared_task(queue='chunk_queue')
 def process_pgn_chunk(games):
     logger.info(f"Processing chunk of {len(games)} games...")
@@ -182,18 +182,15 @@ def process_pgn_chunk(games):
         )
         new_games.append(game_instance)
 
-        games_added += 1
-
         board = chess.Board()
         move_count = 0
         
         fen = board.fen()
         new_fen_positions.append(FENPosition(
             fen_string=fen,
-            game=game_instance,
+            game=game_instance,  
             move_number=move_count
         ))
-        cache_fen_position(fen, game_instance.id)
 
         move_count += 1
 
@@ -211,15 +208,13 @@ def process_pgn_chunk(games):
             fen = board.fen()
             new_fen_positions.append(FENPosition(
                 fen_string=fen,
-                game=game_instance,
+                game=game_instance,  
                 move_number=move_count
             ))
-            cache_fen_position(fen, game_instance.id)
 
             move_count += 1
 
         games_added += 1
-
 
         processed_games.append({
             "white_player": game.headers.get("White", ""),
@@ -235,10 +230,12 @@ def process_pgn_chunk(games):
         with transaction.atomic():
             saved_games = Game.objects.bulk_create(new_games, batch_size=500)
 
+            # Ovdje ažuriramo FEN pozicije nakon što su igre spremljene i dobile ID
             for idx, game_instance in enumerate(saved_games):
                 for fen_pos in new_fen_positions:
                     if fen_pos.game == new_games[idx]:
                         fen_pos.game = game_instance
+                        cache_fen_position(fen_pos.fen_string, game_instance.id)
 
             FENPosition.objects.bulk_create(new_fen_positions, batch_size=500)
 
@@ -251,6 +248,7 @@ def process_pgn_chunk(games):
 
     logger.info(f"Broadcasting {len(processed_games)} new games to clients.")
     return f'Chunk processed: {games_added} games added and broadcasted.'
+
 
 def move_processed_pgn_file(file_path):
     new_path = file_path.replace("pgn_uploads", "processed_pgns")

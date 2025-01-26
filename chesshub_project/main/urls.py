@@ -20,5 +20,5 @@ urlpatterns = [
     path('filtered_games/', filtered_games, name='filtered_games'),
     path('reset_game/', views.reset_game, name='reset_game'),
     path('get_games_by_fen/', views.get_games_by_fen, name='get_games_by_fen'),
-    path('clear_filters/', views.clear_filters, name='clear_filters'),
+    path('clear_filters/', views.clear_filters, name='clear_filters')
 ]
