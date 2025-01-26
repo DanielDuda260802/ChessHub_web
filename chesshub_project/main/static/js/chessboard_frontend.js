@@ -130,6 +130,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((data) => {
                 if (data.fen) {
                     board.position(data.fen);
+                    fetchGamesByFEN(data.fen)
                     updateButtonStates();
 
                     if (data.pgn) {
@@ -180,6 +181,7 @@ document.addEventListener("DOMContentLoaded", function () {
         .then((data) => {
             if (data.fen) {
                 board.position(data.fen);
+                fetchGamesByFEN(data.fen)
             }
             updateButtonStates();
         })
@@ -200,6 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 showVariationMenu(data.variations);
             } else if (data.fen) {
                 board.position(data.fen);
+                fetchGamesByFEN(data.fen)
                 updateButtonStates();
             } else {
                 console.error("Unexpected response:", data);
@@ -296,6 +299,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then((data) => {
                 if (data.fen) {
                     board.position(data.fen);
+                    fetchGamesByFEN(data.fen)
                     updateButtonStates(); 
                 }
                 if (data.pgn) {
@@ -360,6 +364,12 @@ async function fetchGames(page = 1) {
 function renderGames(games) {
     const tableBody = document.querySelector('#game-list-table tbody');
     tableBody.innerHTML = '';
+
+    if (games.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7">Nema partija za ovu poziciju.</td></tr>';
+        return;
+    }
+
     games.forEach(game => {
         const row = document.createElement('tr');
         row.innerHTML = `
@@ -380,7 +390,7 @@ function renderGames(games) {
     });
 }
 
-function setupPagination(totalPages, currentPage) {
+function setupPagination(totalPages, currentPage, isFenSearch = false) {
     const pagination = document.querySelector('#pagination');
     pagination.innerHTML = ''; 
 
@@ -390,35 +400,38 @@ function setupPagination(totalPages, currentPage) {
     const ul = document.createElement('ul');
     ul.classList.add('pagination');
 
-    const maxVisiblePages = 3;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-    if (endPage - startPage + 1 < maxVisiblePages) {
-        startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
+    const createPageLink = (pageNum) => {
+        const pageItem = document.createElement('li');
+        pageItem.className = `page-item ${pageNum === currentPage ? 'active' : ''}`;
+        pageItem.innerHTML = `<a class="page-link" href="#">${pageNum}</a>`;
+        pageItem.addEventListener('click', () => {
+            if (isFenSearch) {
+                fetchGamesByFEN(window.currentFen, pageNum);
+            } else {
+                fetchGames(pageNum);
+            }
+        });
+        return pageItem;
+    };
 
     const prevDisabled = currentPage === 1 ? 'disabled' : '';
     const prevButton = document.createElement('li');
     prevButton.className = `page-item ${prevDisabled}`;
-    prevButton.innerHTML = `
-        <a class="page-link" href="#" aria-label="Previous">&laquo;</a>
-    `;
+    prevButton.innerHTML = `<a class="page-link" href="#" aria-label="Previous">&laquo;</a>`;
     prevButton.addEventListener('click', () => {
-        if (currentPage > 1) fetchGames(currentPage - 1, Object.keys(filters).length > 0);
+        if (currentPage > 1) {
+            if (isFenSearch) {
+                fetchGamesByFEN(window.currentFen, currentPage - 1);
+            } else {
+                fetchGames(currentPage - 1);
+            }
+        }
     });
     ul.appendChild(prevButton);
 
-    if (startPage > 1) {
-        const firstPage = document.createElement('li');
-        firstPage.className = 'page-item';
-        firstPage.innerHTML = `
-            <a class="page-link" href="#">1</a>
-        `;
-        firstPage.addEventListener('click', () => fetchGames(1));
-        ul.appendChild(firstPage);
-
-        if (startPage > 2) {
+    if (currentPage > 3) {
+        ul.appendChild(createPageLink(1));
+        if (currentPage > 4) {
             const dots = document.createElement('li');
             dots.className = 'page-item disabled';
             dots.innerHTML = `<span class="page-link">...</span>`;
@@ -426,39 +439,31 @@ function setupPagination(totalPages, currentPage) {
         }
     }
 
-    for (let i = startPage; i <= endPage; i++) {
-        const pageItem = document.createElement('li');
-        pageItem.className = `page-item ${i === currentPage ? 'active' : ''}`;
-        pageItem.innerHTML = `<a class="page-link" href="#">${i}</a>`;
-        pageItem.addEventListener('click', () => fetchGames(i, Object.keys(filters).length > 0));
-        ul.appendChild(pageItem);
+    for (let i = Math.max(1, currentPage - 1); i <= Math.min(totalPages, currentPage + 2); i++) {
+        ul.appendChild(createPageLink(i));
     }
 
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-            const dots = document.createElement('li');
-            dots.className = 'page-item disabled';
-            dots.innerHTML = `<span class="page-link">...</span>`;
-            ul.appendChild(dots);
-        }
+    if (currentPage < totalPages - 2) {
+        const dots = document.createElement('li');
+        dots.className = 'page-item disabled';
+        dots.innerHTML = `<span class="page-link">...</span>`;
+        ul.appendChild(dots);
 
-        const lastPage = document.createElement('li');
-        lastPage.className = 'page-item';
-        lastPage.innerHTML = `
-            <a class="page-link" href="#">${totalPages}</a>
-        `;
-        lastPage.addEventListener('click', () => fetchGames(totalPages));
-        ul.appendChild(lastPage);
+        ul.appendChild(createPageLink(totalPages));
     }
 
     const nextDisabled = currentPage === totalPages ? 'disabled' : '';
     const nextButton = document.createElement('li');
     nextButton.className = `page-item ${nextDisabled}`;
-    nextButton.innerHTML = `
-        <a class="page-link" href="#" aria-label="Next">&raquo;</a>
-    `;
+    nextButton.innerHTML = `<a class="page-link" href="#" aria-label="Next">&raquo;</a>`;
     nextButton.addEventListener('click', () => {
-        if (currentPage < totalPages) fetchGames(currentPage + 1, Object.keys(filters).length > 0);
+        if (currentPage < totalPages) {
+            if (isFenSearch) {
+                fetchGamesByFEN(window.currentFen, currentPage + 1);
+            } else {
+                fetchGames(currentPage + 1);
+            }
+        }
     });
     ul.appendChild(nextButton);
 
@@ -466,15 +471,11 @@ function setupPagination(totalPages, currentPage) {
     pagination.appendChild(nav);
 }
 
-document.addEventListener("DOMContentLoaded", async function () {
-    await fetchGames(currentPage); 
-});
 
 document.getElementById('filter-form').addEventListener('submit', function(event) {
     event.preventDefault();
     
     filters = {}; 
-
     const formData = new FormData(this);
     formData.forEach((value, key) => {
         if (value.trim() !== '') {
@@ -482,8 +483,14 @@ document.getElementById('filter-form').addEventListener('submit', function(event
         }
     });
 
-    fetchGames(1, true);
+    if (window.currentFen && window.currentFen !== "start") {
+        console.log("Fetching games by FEN due to active position:", window.currentFen);
+        fetchGamesByFEN(window.currentFen, 1);
+    } else {
+        fetchGames(1, true);
+    }
 });
+
 
 if (!window.socket) {
     window.socket = new WebSocket("ws://localhost:8001/ws/games/");
@@ -627,3 +634,45 @@ document.getElementById("reset-game").addEventListener("click", function() {
           }
       });
 });
+
+async function fetchGamesByFEN(fen, page = 1) {
+    showLoader();
+
+    let queryParams = new URLSearchParams(filters);
+    queryParams.append('fen', fen);
+    queryParams.append('page', page);
+
+    const endpoint = `/get_games_by_fen/?${queryParams.toString()}`;
+
+    try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+
+        if (data.error) {
+            console.error("Error fetching games by FEN:", data.error);
+            document.querySelector('#game-list-table tbody').innerHTML = 
+                '<tr><td colspan="7">Greška pri dohvaćanju podataka.</td></tr>';
+            return;
+        }
+
+        if (data.games.length === 0) {
+            document.querySelector('#game-list-table tbody').innerHTML = 
+                '<tr><td colspan="7">Nema partija za ovu poziciju.</td></tr>';
+            return;
+        }
+
+        renderGames(data.games);
+        setupPagination(data.total_pages, data.current_page, true);
+        console.log(`Fetched ${data.games.length} games for FEN:`, fen);
+
+    } catch (error) {
+        console.error("Error fetching games:", error);
+        document.querySelector('#game-list-table tbody').innerHTML = 
+            '<tr><td colspan="7">Greška pri dohvaćanju podataka.</td></tr>';
+    } finally {
+        hideLoader();
+    }
+}
+
+window.fetchGamesByFEN = fetchGamesByFEN;
+
