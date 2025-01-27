@@ -10,6 +10,7 @@ import io
 
 from .models import Game, FENPosition
 from .utils import cache_fen_position
+from .helper import sanitize_fen
 
 from django.core.cache import cache
 from django.core.files.storage import default_storage
@@ -230,12 +231,12 @@ def process_pgn_chunk(games):
         with transaction.atomic():
             saved_games = Game.objects.bulk_create(new_games, batch_size=500)
 
-            # Ovdje ažuriramo FEN pozicije nakon što su igre spremljene i dobile ID
             for idx, game_instance in enumerate(saved_games):
                 for fen_pos in new_fen_positions:
                     if fen_pos.game == new_games[idx]:
                         fen_pos.game = game_instance
-                        cache_fen_position(fen_pos.fen_string, game_instance.id)
+                        sanitized_fen = sanitize_fen(fen_pos.fen_string)
+                        cache_fen_position(sanitized_fen, game_instance.id)
 
             FENPosition.objects.bulk_create(new_fen_positions, batch_size=500)
 
@@ -266,12 +267,14 @@ def sync_fen_to_redis():
 
 @shared_task
 def refresh_fen_cache():
-    fen_positions = FENPosition.objects.all()
-    for position in fen_positions:
-        redis_key = f"fen:{position.fen_string}"
-        existing_games = cache.get(redis_key, [])
-        
-        if position.game_id not in existing_games:
-            existing_games.append(position.game_id)
-            cache.set(redis_key, existing_games, timeout=86400)
+    logger.info("Starting refresh of FEN cache...")
+    all_fen_positions = FENPosition.objects.all()
+
+    for position in all_fen_positions:
+        sanitized_fen = sanitize_fen(position.fen_string)
+        redis_key = f"fen:{sanitized_fen}"
+        redis_client.sadd(redis_key, position.game_id)
+        redis_client.expire(redis_key, 86400)
+
+    logger.info("Redis FEN cache successfully updated.")
     return "Redis FEN cache updated."

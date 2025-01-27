@@ -164,13 +164,7 @@ CELERY_TASK_ROUTES = {
     'main.tasks.process_pgn_queue': {'queue': 'process_queue'},
     'main.tasks.upload_pgn_to_storage': {'queue': 'upload_queue'},
     'main.tasks.fetch_pgn_files_from_storage': {'queue': 'fetch_queue'},
-}
-
-CELERY_BEAT_SCHEDULE = {
-    'refresh_redis_cache_task': {
-        'task': 'main.tasks.refresh_redis_cache',
-        'schedule': crontab(minute='*/5'),
-    },
+    'main.tasks.refresh_fen_cache': {'queue': 'beat_queue'},
 }
 
 LOGIN_URL = '/login/'
@@ -195,10 +189,11 @@ CACHES = {
     }
 }
 
-
-
 SESSION_ENGINE = 'django.contrib.sessions.backends.db' 
 
 SESSION_COOKIE_AGE = 86400  
 SESSION_SAVE_EVERY_REQUEST = True 
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+TIME_ZONE = 'UTC'
+USE_TZ = True

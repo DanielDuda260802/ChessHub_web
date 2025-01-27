@@ -1,21 +1,17 @@
 import redis
 from django.conf import settings
+from main.helper import sanitize_fen
 
 redis_client = redis.Redis.from_url(settings.REDIS_URL)
 
 def cache_fen_position(fen, game_id):
-    if game_id is None:
-        print("Error: game_id is None, skipping Redis entry.")
-        return
+    sanitized_fen = sanitize_fen(fen)
+    redis_key = f"fen:{sanitized_fen}"
+    cache.lpush(redis_key, game_id)
+    cache.expire(redis_key, 86400)
 
-    redis_key = f"fen:{fen}"
+    print(f"Added game ID {game_id} to FEN {sanitized_fen}")
 
-    redis_client.sadd(redis_key, game_id)
-
-    if redis_client.ttl(redis_key) == -1:
-        redis_client.expire(redis_key, 86400)
-
-    print(f"Added game ID {game_id} to FEN {fen}")
 
 def get_games_by_fen(fen):
     redis_key = f"fen:{fen}"

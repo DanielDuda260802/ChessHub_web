@@ -41,6 +41,7 @@ isodate==0.7.2
 jmespath==1.0.1
 kombu==5.4.2
 msgpack==1.1.0
+netcat==0.0.1a0
 prompt_toolkit==3.0.50
 psycopg2==2.9.10
 psycopg2-binary==2.9.10

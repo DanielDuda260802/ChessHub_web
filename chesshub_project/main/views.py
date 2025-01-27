@@ -424,6 +424,7 @@ from django.conf import settings
 redis_client = redis.Redis.from_url(settings.REDIS_URL)
 
 def get_games_by_fen(request):
+    from main.helper import sanitize_fen
     fen = request.GET.get('fen', None)
     page = request.GET.get('page', 1)
 
@@ -451,7 +452,8 @@ def get_games_by_fen(request):
     request.session['filters'] = filters
     request.session.modified = True
 
-    redis_key = f"fen:{fen}"
+    sanitized_fen = sanitize_fen(fen)
+    redis_key = f"fen:{sanitized_fen}"
     game_ids = redis_client.smembers(redis_key)
 
     if not game_ids:

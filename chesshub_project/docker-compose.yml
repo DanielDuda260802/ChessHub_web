@@ -22,49 +22,53 @@ services:
     container_name: celery-upload
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=3 -Q upload_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=3 -Q upload_queue -n chunk_worker@%h
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
+      - django
 
   celery-fetch:
     container_name: celery-fetch
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=1 -Q fetch_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=1 -Q fetch_queue -n chunk_worker@%h
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
+      - django
 
   celery-process:
     container_name: celery-process
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=2 -Q process_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=2 -Q process_queue -n chunk_worker@%h
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
+      - django
 
   celery-chunk:
     container_name: celery-chunk
     build: 
       context: .
-    command: celery --app=chesshub_project worker -l INFO --concurrency=10 -Q chunk_queue
+    command: celery --app=chesshub_project worker -l INFO --concurrency=10 -Q chunk_queue -n chunk_worker@%h
     volumes: 
       - .:/usr/src/app/
     env_file:
       - .env
     depends_on:
       - redis
+      - django
   
   celery-beat:
     container_name: celery-beat
@@ -76,4 +80,19 @@ services:
     env_file:
       - .env
     depends_on:
+      - django
       - redis
+
+  celery-beat-worker:
+    container_name: celery-beat-worker
+    build: 
+      context: .
+    command: celery --app=chesshub_project worker --loglevel=INFO --concurrency=1 -Q beat_queue
+    volumes: 
+      - .:/usr/src/app/
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - django
+      
