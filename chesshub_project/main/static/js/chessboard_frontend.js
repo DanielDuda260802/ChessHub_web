@@ -129,6 +129,27 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .then((data) => {
                 if (data.fen) {
+                    if (document.getElementById("enable-eval")?.checked) {
+                        fetch("/evaluate_fen/", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRFToken": getCsrfToken()
+                            },
+                            body: JSON.stringify({ fen: data.fen })
+                        })
+                        .then((res) => res.json())
+                        .then((evalData) => {
+                            document.getElementById("eval-score").textContent = evalData.eval;
+                            document.getElementById("best-move").textContent = evalData.best_move;
+                        })
+                        .catch((err) => {
+                            console.error("Evaluation error:", err);
+                            document.getElementById("eval-score").textContent = "Error";
+                            document.getElementById("best-move").textContent = "Error";
+                        });
+                    }
+
                     board.position(data.fen);
                     fetchGamesByFEN(data.fen)
                     updateButtonStates();
@@ -145,6 +166,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 board.position(previousFen);
             });
         }
+        window.sendMoveToBackend = sendMoveToBackend;
 
     function updateButtonStates() {
         fetch("/current_state/", {
@@ -182,37 +204,77 @@ document.addEventListener("DOMContentLoaded", function () {
             if (data.fen) {
                 board.position(data.fen);
                 fetchGamesByFEN(data.fen)
+                if (document.getElementById("enable-eval").checked) {
+                    fetch("/evaluate_fen/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "X-CSRFToken": getCsrfToken()
+                        },
+                        body: JSON.stringify({ fen: data.fen })
+                    })
+                    .then((res) => res.json())
+                    .then((evalData) => {
+                        document.getElementById("eval-score").textContent = evalData.eval;
+                        document.getElementById("best-move").textContent = evalData.best_move;
+                    })
+                    .catch((err) => {
+                        console.error("Evaluation error:", err);
+                        document.getElementById("eval-score").textContent = "Error";
+                        document.getElementById("best-move").textContent = "Error";
+                    });
+                }
             }
             updateButtonStates();
         })
         .catch((error) => console.error("Error navigating back:", error));
     }
     
-    function navigateNext() {
-        fetch("/next-move/", {
-            method: "POST",
-            headers: {
-                "X-CSRFToken": getCsrfToken()
-            }
-        })
-        .then((response) => response.json())
-        .then((data) => {
-            if (data.variations) {
-                console.log("Available variations:", data.variations);
-                showVariationMenu(data.variations);
-            } else if (data.fen) {
-                board.position(data.fen);
-                fetchGamesByFEN(data.fen)
-                updateButtonStates();
-            } else {
-                console.error("Unexpected response:", data);
-            }
-        })
-        .catch((error) => {
-            console.error("Error navigating next:", error.message);
-        });
-    }
+function navigateNext() {
+    fetch("/next-move/", {
+        method: "POST",
+        headers: {
+            "X-CSRFToken": getCsrfToken()
+        }
+    })
+    .then((response) => response.json())
+    .then((data) => {
+        if (data.variations) {
+            console.log("Available variations:", data.variations);
+            showVariationMenu(data.variations);
+        } else if (data.fen) {
+            board.position(data.fen);
+            fetchGamesByFEN(data.fen);
 
+            if (document.getElementById("enable-eval").checked) {
+                fetch("/evaluate_fen/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCsrfToken()
+                    },
+                    body: JSON.stringify({ fen: data.fen })
+                })
+                .then((res) => res.json())
+                .then((evalData) => {
+                    document.getElementById("eval-score").textContent = evalData.eval;
+                    document.getElementById("best-move").textContent = evalData.best_move;
+                })
+                .catch((err) => {
+                    console.error("Evaluation error:", err);
+                    document.getElementById("eval-score").textContent = "Error";
+                    document.getElementById("best-move").textContent = "Error";
+                });
+            }
+        } else {
+            console.error("Unexpected response:", data);
+        }
+        updateButtonStates();
+    })
+    .catch((error) => {
+        console.error("Error navigating next:", error.message);
+    });
+}
     document.getElementById("prev-move").addEventListener("click", navigateBack);
     document.getElementById("next-move").addEventListener("click", navigateNext);
 
@@ -314,6 +376,8 @@ document.addEventListener("DOMContentLoaded", function () {
     function getCsrfToken() {
         return document.querySelector("meta[name='csrf-token']").getAttribute("content");
     }
+
+    window.getCsrfToken = getCsrfToken;
 });
 
 /* GAME LIST **/
@@ -675,4 +739,5 @@ async function fetchGamesByFEN(fen, page = 1) {
 }
 
 window.fetchGamesByFEN = fetchGamesByFEN;
+
 
