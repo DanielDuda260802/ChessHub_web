@@ -108,7 +108,18 @@
 
                 <!-- Right Column -->
                 <div id="right-column" class="col-md-4 column">
-                    <h2 class="header">Details</h2>
+                    <h2 class="header">Chess Engine</h2>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" value="" id="enable-eval">
+                        <label class="form-check-label" for="enable-eval">
+                            Show Engine Evaluation
+                        </label>
+                    </div>
+
+                    <div id="engine-eval-output" class="p-2 border rounded bg-light text-dark">
+                        <p><strong>Eval:</strong> <span id="eval-score">—</span></p>
+                        <p><strong>Best Move:</strong> <span id="best-move">—</span></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -186,7 +197,38 @@
                         }
                         console.log("Filters applied to the form.");
                     }, 300);
+                    document.getElementById("enable-eval").addEventListener("change", function () {
+                        console.log("Checkbox clicked. Checked:", this.checked);
+
+                        if (this.checked) {
+                            const currentFen = window.board.fen();
+                            console.log("Evaluating FEN:", currentFen);  // dodatni log
+                            fetch("/evaluate_fen/", {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-CSRFToken": window.getCsrfToken()
+                                },
+                                body: JSON.stringify({ fen: currentFen })
+                            })
+                            .then((res) => res.json())
+                            .then((evalData) => {
+                                console.log("Eval data received:", evalData);  // dodatni log
+                                document.getElementById("eval-score").textContent = evalData.eval;
+                                document.getElementById("best-move").textContent = evalData.best_move;
+                            })
+                            .catch((err) => {
+                                console.error("Evaluation error:", err);
+                                document.getElementById("eval-score").textContent = "Error";
+                                document.getElementById("best-move").textContent = "Error";
+                            });
+                        } else {
+                            document.getElementById("eval-score").textContent = "—";
+                            document.getElementById("best-move").textContent = "—";
+                        }
+                    });
                 });
+                    
             </script>
             
         {% endblock %}
