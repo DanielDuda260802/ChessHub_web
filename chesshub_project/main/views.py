@@ -20,6 +20,7 @@ from chess.pgn import read_game
 from io import StringIO
 
 from main.models import Game, FENPosition
+from main.chess_model.evaluation import evaluate_fen
 from .tasks import upload_pgn_to_storage
 from .utils import get_games_by_fen
 
@@ -507,3 +508,36 @@ def get_games_by_fen(request):
 def generate_cache_key(fen, page, filters):
     filter_str = '_'.join(f'{key}:{value}' for key, value in filters.items() if value)
     return f"fen:{fen}:page:{page}:{filter_str}"
+
+@csrf_exempt
+def evaluate_fen_view(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Only POST allowed"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        fen = data.get("fen")
+        if not fen:
+            return JsonResponse({"error": "FEN is required"}, status=400)
+
+        result = evaluate_fen(fen)
+        board = chess.Board(fen)
+        best_move = None
+
+        if result["best_moves"]:
+            uci_move = result["best_moves"][0]  
+            move_obj = chess.Move.from_uci(uci_move)
+            if move_obj in board.legal_moves:
+                best_move = board.san(move_obj)  
+            else:
+                best_move = uci_move  
+        else:
+            best_move = "N/A"
+
+        return JsonResponse({
+            "eval": result["eval"],
+            "best_move": best_move
+        })
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
