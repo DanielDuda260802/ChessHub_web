@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import game_details, get_game_moves, upload_pgn, get_games, filtered_games, reset_game, get_games_by_fen, clear_filters
+from .views import game_details, get_game_moves, upload_pgn, get_games, filtered_games, reset_game, get_games_by_fen, clear_filters, evaluate_fen_view
 
 app_name = 'main'  
 
@@ -20,5 +20,6 @@ urlpatterns = [
     path('filtered_games/', filtered_games, name='filtered_games'),
     path('reset_game/', views.reset_game, name='reset_game'),
     path('get_games_by_fen/', views.get_games_by_fen, name='get_games_by_fen'),
-    path('clear_filters/', views.clear_filters, name='clear_filters')
+    path('clear_filters/', views.clear_filters, name='clear_filters'),
+    path("evaluate_fen/", views.evaluate_fen_view, name="evaluate_fen")
 ]
