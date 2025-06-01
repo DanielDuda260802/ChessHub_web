@@ -28,26 +28,40 @@ env = environ.Env(
 
 environ.Env.read_env(BASE_DIR / '.env')
 
-AZURE_CONTAINER = env('AZURE_CONTAINER')
-AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME')
-AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')
+# PREBACIVANJE NA LOKALNI STORAGE ZA POTREBE PROJEKTA
+# AZURE_CONTAINER = env('AZURE_CONTAINER')
+# AZURE_ACCOUNT_NAME = env('AZURE_ACCOUNT_NAME')
+# AZURE_ACCOUNT_KEY = env('AZURE_ACCOUNT_KEY')
+
+# STORAGES = {
+#     "default": {
+#         "BACKEND": "storages.backends.azure_storage.AzureStorage",
+#         "OPTIONS": {
+#             'timeout': 20,
+#             'expiration_secs': 500,
+#         },
+#     },
+#     "staticfiles": {
+#         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#     },
+# }
+
+# STATICFILES_STORAGE = "storages.backends.azure_storage.AzureStorage"
+
+# LOKALNI STORAGE
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STORAGES = {
     "default": {
-        "BACKEND": "storages.backends.azure_storage.AzureStorage",
-        "OPTIONS": {
-            'timeout': 20,
-            'expiration_secs': 500,
-        },
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
     },
     "staticfiles": {
         "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
     },
 }
 
-STATICFILES_STORAGE = "storages.backends.azure_storage.AzureStorage"
-
-
+# LOKALNI STORAGE
 
 # Application definition
 INSTALLED_APPS = [
@@ -104,7 +118,6 @@ DATABASES = {
     'default': dj_database_url.config(
         default=config('DATABASE_URL'),
         conn_max_age=600,  
-        ssl_require=True
     )
 }
 

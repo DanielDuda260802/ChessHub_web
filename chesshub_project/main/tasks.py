@@ -14,6 +14,7 @@ from .helper import sanitize_fen
 
 from django.core.cache import cache
 from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile # LOKALNI STORAGE
 from django.conf import settings
 from django.db import transaction
 
@@ -76,7 +77,8 @@ def broadcast_games(processed_games):
 
 @shared_task(queue='upload_queue')
 def upload_pgn_to_storage(pgn_file_path):
-    logger.info(f"Uploading PGN file to Azure Storage: {pgn_file_path}")
+    # logger.info(f"Uploading PGN file to Azure Storage: {pgn_file_path}")
+    logger.info(f"Uploading PGN file to local storage: {pgn_file_path}")
 
     try:
         if not default_storage.exists(pgn_file_path):
@@ -94,12 +96,13 @@ def upload_pgn_to_storage(pgn_file_path):
 
 @shared_task(queue='fetch_queue')
 def fetch_pgn_files_from_storage():
-    logger.info("Fetching PGN files from Azure Storage...")
+    # logger.info("Fetching PGN files from Azure Storage...")
+    logger.info("Fetching PGN files from local storage...")
 
     try:
         files = default_storage.listdir('pgn_uploads')[1]
         for file_name in files:
-            file_path = f"{file_name}"
+            file_path = f"pgn_uploads/{file_name}"
             process_pgn_queue.apply_async(args=[file_path])
             logger.info(f"Queued for processing: {file_path}")
 
@@ -252,16 +255,29 @@ def process_pgn_chunk(games):
 
 
 def move_processed_pgn_file(file_path):
-    new_path = file_path.replace("pgn_uploads", "processed_pgns")
-    default_storage.save(new_path, default_storage.open(file_path))
-    default_storage.delete(file_path)
-    logger.info(f"Moved processed file to: {new_path}")
+    # AZURE:
+    # new_path = file_path.replace("pgn_uploads", "processed_pgns")
+    # default_storage.save(new_path, default_storage.open(file_path))
+    # default_storage.delete(file_path)
+    # logger.info(f"Moved processed file to: {new_path}")
+
+    # lokalni storage
+    try:
+        new_path = file_path.replace("pgn_uploads", "processed_pgns")
+        with default_storage.open(file_path, "rb") as f:
+            content = f.read()
+            default_storage.save(new_path, ContentFile(content))
+        default_storage.delete(file_path)
+        logger.info(f"Moved processed file to: {new_path}")
+    except Exception as e:
+        logger.error(f"Error moving file {file_path} to {new_path}: {str(e)}")
 
 @shared_task
 def sync_fen_to_redis():
     all_fen_positions = FENPosition.objects.all()
     for position in all_fen_positions:
-        redis_client.sadd(f"fen:{position.fen_string}", position.game_id.id)
+        sanitized_fen = sanitize_fen(position.fen_string)
+        redis_client.sadd(f"fen:{sanitized_fen}", position.game_id.id)
     print("Redis FEN cache successfully updated.")
 
 

@@ -95,4 +95,18 @@ services:
     depends_on:
       - redis
       - django
-      
+    
+  postgres:
+    image: postgres:14
+    restart: always
+    environment:
+      POSTGRES_USER: chessuser
+      POSTGRES_PASSWORD: chesspass
+      POSTGRES_DB: chessuser
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+
+volumes:
+  postgres_data:

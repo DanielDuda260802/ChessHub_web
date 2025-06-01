@@ -17,7 +17,7 @@ app.conf.update(
 app.conf.beat_schedule = {
     'refresh_fen_cache_every_six_hours': {
         'task': 'main.tasks.refresh_fen_cache',
-        'schedule': 21600,  
+        'schedule': 10,  
     },
 }
 app.conf.timezone = 'UTC'
