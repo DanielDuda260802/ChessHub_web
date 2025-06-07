@@ -515,22 +515,32 @@ def evaluate_fen_view(request):
         return JsonResponse({"error": "Only POST allowed"}, status=405)
 
     try:
+        from main.chess_model.evaluation import evaluate_fen, game_history
+
         data = json.loads(request.body)
         fen = data.get("fen")
+        history = data.get("history", []) 
+
         if not fen:
             return JsonResponse({"error": "FEN is required"}, status=400)
 
+        game_history.clear()
+        game_history.extend(history)
+
+        print("🧠 Evaluating FEN with history (length):", len(game_history))
+        print("📥 FEN:", fen)
+
         result = evaluate_fen(fen)
         board = chess.Board(fen)
-        best_move = None
 
+        best_move = None
         if result["best_moves"]:
-            uci_move = result["best_moves"][0]  
+            uci_move = result["best_moves"][0]
             move_obj = chess.Move.from_uci(uci_move)
             if move_obj in board.legal_moves:
-                best_move = board.san(move_obj)  
+                best_move = board.san(move_obj)
             else:
-                best_move = uci_move  
+                best_move = uci_move
         else:
             best_move = "N/A"
 
@@ -540,4 +550,5 @@ def evaluate_fen_view(request):
         })
 
     except Exception as e:
+        print("❌ Exception in evaluation:", str(e))
         return JsonResponse({"error": str(e)}, status=500)
