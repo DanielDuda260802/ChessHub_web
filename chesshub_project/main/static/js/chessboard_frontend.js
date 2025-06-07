@@ -1,5 +1,8 @@
 import { Chess } from "/static/chess.js-0.13.4/chess.js"
 
+let game_history = [];
+window.game_history = [];
+
 document.addEventListener("DOMContentLoaded", function () {
     var game = new Chess();
 
@@ -107,7 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         document.body.appendChild(menu);
     }
-        
+
     function sendMoveToBackend(move) {
         const previousFen = board.fen();
 
@@ -129,14 +132,17 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .then((data) => {
                 if (data.fen) {
+                    game_history.push(data.fen);
+                    console.log("✅ Sending history:", game_history);
                     if (document.getElementById("enable-eval")?.checked) {
+                        console.log("✅ Sending history:", game_history);
                         fetch("/evaluate_fen/", {
                             method: "POST",
                             headers: {
                                 "Content-Type": "application/json",
                                 "X-CSRFToken": getCsrfToken()
                             },
-                            body: JSON.stringify({ fen: data.fen })
+                            body: JSON.stringify({ fen: data.fen, history: game_history })
                         })
                         .then((res) => res.json())
                         .then((evalData) => {
@@ -205,48 +211,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 board.position(data.fen);
                 fetchGamesByFEN(data.fen)
                 if (document.getElementById("enable-eval").checked) {
-                    fetch("/evaluate_fen/", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRFToken": getCsrfToken()
-                        },
-                        body: JSON.stringify({ fen: data.fen })
-                    })
-                    .then((res) => res.json())
-                    .then((evalData) => {
-                        document.getElementById("eval-score").textContent = evalData.eval;
-                        document.getElementById("best-move").textContent = evalData.best_move;
-                    })
-                    .catch((err) => {
-                        console.error("Evaluation error:", err);
-                        document.getElementById("eval-score").textContent = "Error";
-                        document.getElementById("best-move").textContent = "Error";
-                    });
-                }
-            }
-            updateButtonStates();
-        })
-        .catch((error) => console.error("Error navigating back:", error));
-    }
-    
-function navigateNext() {
-    fetch("/next-move/", {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": getCsrfToken()
-        }
-    })
-    .then((response) => response.json())
-    .then((data) => {
-        if (data.variations) {
-            console.log("Available variations:", data.variations);
-            showVariationMenu(data.variations);
-        } else if (data.fen) {
-            board.position(data.fen);
-            fetchGamesByFEN(data.fen);
-
-            if (document.getElementById("enable-eval").checked) {
                 fetch("/evaluate_fen/", {
                     method: "POST",
                     headers: {
@@ -266,15 +230,37 @@ function navigateNext() {
                     document.getElementById("best-move").textContent = "Error";
                 });
             }
-        } else {
-            console.error("Unexpected response:", data);
-        }
-        updateButtonStates();
-    })
-    .catch((error) => {
-        console.error("Error navigating next:", error.message);
-    });
-}
+            }
+            updateButtonStates();
+        })
+        .catch((error) => console.error("Error navigating back:", error));
+    }
+    
+    function navigateNext() {
+        fetch("/next-move/", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": getCsrfToken()
+            }
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (data.variations) {
+                console.log("Available variations:", data.variations);
+                showVariationMenu(data.variations);
+            } else if (data.fen) {
+                board.position(data.fen);
+                fetchGamesByFEN(data.fen)
+                updateButtonStates();
+            } else {
+                console.error("Unexpected response:", data);
+            }
+        })
+        .catch((error) => {
+            console.error("Error navigating next:", error.message);
+        });
+    }
+
     document.getElementById("prev-move").addEventListener("click", navigateBack);
     document.getElementById("next-move").addEventListener("click", navigateNext);
 
@@ -695,6 +681,7 @@ document.getElementById("reset-game").addEventListener("click", function() {
       .then(data => {
           if (data.success) {
               location.reload();
+              gameHistory = []
           }
       });
 });
